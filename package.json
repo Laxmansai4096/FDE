@@ -1,0 +1,26 @@
+{
+  "name": "aura-perfumery-fde-platform",
+  "version": "1.0.0",
+  "description": "Enterprise Forward Deployed Engineer (FDE) Reference Architecture for AURA Perfumery AI Concierge",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "fde",
+    "forward-deployed-engineer",
+    "llm-gateway",
+    "rag",
+    "vector-db",
+    "perfume-concierge",
+    "telemetry",
+    "guardrails"
+  ],
+  "author": "FDE Engineering Team",
+  "license": "MIT"
+}
