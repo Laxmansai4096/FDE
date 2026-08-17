@@ -671,25 +671,25 @@ body {
 .fde-drawer {
   position: fixed;
   top: 0;
-  right: -550px;
-  width: 550px;
+  right: -600px;
+  width: 600px;
   height: 100vh;
   background: #0D1117;
-  border-left: 1px solid var(--gold-primary);
-  z-index: 1000;
-  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8);
+  border-left: 2px solid var(--gold-primary);
+  z-index: 9999 !important;
+  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.9);
   transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
 }
 
 .fde-drawer.open {
-  right: 0;
+  right: 0 !important;
 }
 
 .drawer-header {
   padding: 1.2rem 1.5rem;
-  background: rgba(226, 192, 133, 0.05);
+  background: rgba(226, 192, 133, 0.08);
   border-bottom: 1px solid var(--bg-card-border);
   display: flex;
   justify-content: space-between;
@@ -706,9 +706,10 @@ body {
 .btn-close {
   background: none;
   border: none;
-  color: var(--text-muted);
-  font-size: 1.6rem;
+  color: var(--gold-primary);
+  font-size: 1.8rem;
   cursor: pointer;
+  line-height: 1;
 }
 
 .drawer-content {

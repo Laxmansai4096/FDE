@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AURA PERFUMERY — Haute Parfumerie & FDE Olfactory Intelligence</title>
+  <title>AURA ROYAL PERFUMERY INDIA — Royal Fragrances & AI Support</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -15,19 +15,20 @@
   <header class="navbar">
     <div class="nav-container">
       <div class="brand">
-        <span class="brand-title">AURA</span>
-        <span class="brand-subtitle">HAUTE PARFUMERIE</span>
+        <span class="brand-title">AURA INDIA</span>
+        <span class="brand-subtitle">ROYAL FRAGRANCES & AI SUPPORT</span>
       </div>
       <nav class="nav-links">
-        <a href="#concierge" class="nav-item active">AI Scent Sommelier</a>
-        <a href="#autogen" class="nav-item">AutoGen 4-Agent Team</a>
-        <a href="#catalog" class="nav-item">Catalog & Vectors</a>
-        <a href="#quiz" class="nav-item">Scent Quiz</a>
+        <a href="#concierge" class="nav-item active">AI Scent Assistant</a>
+        <a href="#oms-inspector" class="nav-item">Order Status & Stock</a>
+        <a href="#gateway-inspector" class="nav-item">Gateway & Failover</a>
+        <a href="#autogen" class="nav-item">Multi-Agent AI Team</a>
+        <a href="#evals-inspector" class="nav-item">Evals & Security Audit</a>
       </nav>
       <div class="nav-actions">
-        <button id="toggle-fde-drawer" class="btn-fde-ops">
+        <button id="toggle-fde-drawer" class="btn-fde-ops" onclick="document.getElementById('fde-drawer').classList.add('open')">
           <span class="pulse-dot"></span>
-          FDE Ops Inspector
+          ⚡ FDE Ops Inspector
         </button>
       </div>
     </div>
@@ -38,53 +39,53 @@
     <div class="hero-overlay"></div>
     <div class="hero-content">
       <div class="badge-fde">Enterprise FDE Architecture Case Study</div>
-      <h1 class="hero-title">Olfactory Artistry Powered by Enterprise AI</h1>
+      <h1 class="hero-title">Royal Indian Fragrances Powered by Enterprise AI</h1>
       <p class="hero-description">
-        Experience our bespoke Fragrance Concierge & Customer Support Assistant backed by a resilient <strong>LLM Gateway</strong>, 
-        <strong>Hybrid RAG Engine</strong>, <strong>Order Management OMS</strong>, <strong>Microsoft AutoGen Multi-Agent Team</strong>, and real-time <strong>Telemetry</strong>.
+        Discover authentic Indian luxury perfumes, track order shipments (e.g. ORD-8821), place new orders, 
+        or run multi-agent AI team collaborations in real time.
       </p>
       <div class="hero-stats">
-        <div class="stat-pill"><span class="stat-num" id="stat-latency">-- ms</span><span class="stat-lbl">Gateway Latency</span></div>
-        <div class="stat-pill"><span class="stat-num" id="stat-cache">--%</span><span class="stat-lbl">Semantic Cache Hit</span></div>
-        <div class="stat-pill"><span class="stat-num" id="stat-cost">$0.00</span><span class="stat-lbl">Token Cost</span></div>
+        <div class="stat-pill"><span class="stat-num" id="stat-latency">-- ms</span><span class="stat-lbl">Gateway Speed</span></div>
+        <div class="stat-pill"><span class="stat-num" id="stat-cache">--%</span><span class="stat-lbl">Cache Savings</span></div>
+        <div class="stat-pill"><span class="stat-num" id="stat-cost">$0.00</span><span class="stat-lbl">Total Token Spend</span></div>
       </div>
     </div>
   </section>
 
   <main class="main-container">
     
-    <!-- Section 1: AI Scent Sommelier (Chatbot + RAG + Customer Support + Agentic Mode) -->
+    <!-- Section 1: AI Scent Assistant (Chatbot + RAG + Customer Support + Agentic Mode) -->
     <section id="concierge" class="section-card">
       <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <div class="section-badge">RAG + Customer Support OMS + LLM Gateway + ReAct Agent</div>
-          <h2>Le Scent Sommelier & Order Support Assistant</h2>
-          <p>Ask for scent recommendations, track existing orders, place new orders, or trigger Autonomous Agentic Mode.</p>
+          <div class="section-badge">RAG Search + Customer Support OMS + LLM Gateway + ReAct Agent</div>
+          <h2>AI Fragrance & Order Support Assistant</h2>
+          <p>Ask for perfume recommendations, track existing orders, place new orders, or enable Autonomous Agent Mode.</p>
         </div>
 
         <div class="mode-toggle-container">
           <label for="agent-mode-toggle" class="toggle-label">
             <input type="checkbox" id="agent-mode-toggle">
             <span class="toggle-slider"></span>
-            <span class="toggle-text">Autonomous Agentic Mode (ReAct Tool Calling)</span>
+            <span class="toggle-text">Autonomous Agent Mode (ReAct Tool Calling)</span>
           </label>
         </div>
       </div>
 
-      <!-- Quick Prompt Suggestions -->
+      <!-- Quick Prompt Suggestions in Clear Indian English -->
       <div class="prompt-chips">
-        <span class="chip-label">Scent Prompts:</span>
-        <button class="chip-btn" data-prompt="I need a mysterious smoky cedarwood fragrance for cold winter nights.">Smoky Cedarwood</button>
-        <button class="chip-btn" data-prompt="Suggest a fresh solar citrus perfumery for summer vacation.">Solar Citrus Spray</button>
-        <button class="chip-btn chip-agent" data-prompt="Create a custom bespoke formula blend with Bergamot, Cedarwood, and Vanilla.">🤖 Create Bespoke Blend</button>
+        <span class="chip-label">Perfume Queries:</span>
+        <button class="chip-btn" data-prompt="I need a warm smoky sandalwood fragrance for cold winter nights.">Smoky Mysore Sandalwood</button>
+        <button class="chip-btn" data-prompt="Suggest a fresh solar Malabar citrus fragrance for summer vacation.">Solar Malabar Citrus</button>
+        <button class="chip-btn chip-agent" data-prompt="Create a custom bespoke formula blend with Assam Oud, Sandalwood, and Saffron.">🤖 Create Custom Attar Blend</button>
       </div>
 
       <div class="prompt-chips" style="margin-top: -0.8rem">
-        <span class="chip-label">Order Support Prompts:</span>
+        <span class="chip-label">Order Support:</span>
         <button class="chip-btn chip-support" data-prompt="Check status of order ORD-8821">📦 Track Order ORD-8821</button>
         <button class="chip-btn chip-support" data-prompt="Cancel order ORD-9430">❌ Cancel Order ORD-9430</button>
-        <button class="chip-btn chip-support" data-prompt="Place order for L'Ombre du Bois">🛍️ Place Order for L'Ombre du Bois</button>
-        <button class="chip-btn chip-autogen" id="btn-chip-autogen" data-prompt="Formulate perfume for black tie gala">🏢 Run AutoGen 4-Agent Team</button>
+        <button class="chip-btn chip-support" data-prompt="Place order for Royal Oud & Mysore Sandalwood">🛍️ Order Mysore Sandalwood</button>
+        <button class="chip-btn chip-autogen" id="btn-chip-autogen" data-prompt="Formulate signature perfume for royal wedding gala">🏢 Run Multi-Agent AI Team</button>
       </div>
 
       <!-- Chat Interface -->
@@ -93,124 +94,191 @@
           <div class="message msg-ai">
             <div class="msg-avatar">AURA</div>
             <div class="msg-bubble">
-              <p>Greetings. I am your AURA Olfactory Sommelier & Customer Support Assistant. You can ask for fragrance recommendations, track order status (e.g., ORD-8821), place new orders, or trigger Microsoft AutoGen Multi-Agent Team Collaboration.</p>
+              <p>Namaste! Welcome to AURA Royal Perfumery India. I am your Fragrance Sommelier & Order Support Assistant. Ask for perfume recommendations, track your order (e.g. ORD-8821), or place new orders.</p>
             </div>
           </div>
         </div>
 
         <form id="chat-form" class="chat-input-area">
-          <input type="text" id="chat-input" placeholder="Type your fragrance query or order request (e.g., 'Track order ORD-8821')..." required />
+          <input type="text" id="chat-input" placeholder="Type your perfume request or order ID (e.g. 'Track order ORD-8821' or 'Warm sandalwood fragrance')..." required />
           <button type="submit" id="btn-send" class="btn-primary">
-            <span id="send-btn-label">Query Assistant</span>
+            <span id="send-btn-label">Send Request</span>
           </button>
         </form>
       </div>
     </section>
 
-    <!-- Section 2: Microsoft AutoGen 4-Agent Team Inspector -->
+    <!-- Section 2: Order Management & Real-Time Relational Inventory Inspector -->
+    <section id="oms-inspector" class="section-card">
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <div class="section-badge">Order OMS + Relational Database (server/orders.js)</div>
+          <h2>Live Order Status & Inventory Inspector</h2>
+          <p>Verify real-time database state changes when placing orders, tracking shipments, or cancelling orders.</p>
+        </div>
+        <button id="btn-refresh-oms" class="btn-secondary">🔄 Refresh Database</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        <!-- Live Orders Database Table -->
+        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(226, 192, 133, 0.2); border-radius: 8px; padding: 1.2rem;">
+          <h3 style="font-family: var(--font-mono); color: var(--gold-primary); font-size: 0.95rem; margin-bottom: 0.8rem;">
+            📦 Active Customer Orders (GET /api/orders)
+          </h3>
+          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <table class="trace-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Perfume Name</th>
+                  <th>Status</th>
+                  <th>Tracking Number</th>
+                </tr>
+              </thead>
+              <tbody id="oms-orders-tbody">
+                <tr><td colspan="4" class="text-center">Loading orders database...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Live Product Inventory Stock Table -->
+        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 1.2rem;">
+          <h3 style="font-family: var(--font-mono); color: var(--accent-cyan); font-size: 0.95rem; margin-bottom: 0.8rem;">
+            🏭 Atelier Stock Inventory (GET /api/products)
+          </h3>
+          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <table class="trace-table">
+              <thead>
+                <tr>
+                  <th>Perfume Name</th>
+                  <th>Price (₹)</th>
+                  <th>Stock Count</th>
+                  <th>State</th>
+                </tr>
+              </thead>
+              <tbody id="oms-stock-tbody">
+                <tr><td colspan="4" class="text-center">Loading stock catalog...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Gateway Load Balancer & Failover Circuit Breaker Inspector -->
+    <section id="gateway-inspector" class="section-card">
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <div class="section-badge">LLM Gateway Router + Load Balancer + Circuit Breaker</div>
+          <h2>Gateway Load Balancer & Outage Failover Inspector</h2>
+          <p>Inspect multi-region server health and simulate a cloud outage live.</p>
+        </div>
+        <div style="display: flex; gap: 0.8rem;">
+          <button id="btn-toggle-outage" class="btn-primary" style="background: var(--accent-danger); color: #fff;">
+            ⚠️ Simulate Cloud Outage Failover
+          </button>
+          <button id="btn-restore-gateway" class="btn-secondary">
+            ✅ Restore Primary Server Cluster
+          </button>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+        <!-- Replica Pool Box -->
+        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 8px; padding: 1.2rem;">
+          <div style="color: var(--accent-green); font-family: var(--font-mono); font-weight: 700; margin-bottom: 0.6rem;">
+            ⚖️ Multi-Region Model Servers (GET /api/gateway/status)
+          </div>
+          <div id="lb-replicas-container" style="font-family: var(--font-mono); font-size: 0.8rem;">
+            Loading gateway servers...
+          </div>
+        </div>
+
+        <!-- Circuit Breaker Box -->
+        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(192, 132, 252, 0.3); border-radius: 8px; padding: 1.2rem;">
+          <div style="color: var(--accent-purple); font-family: var(--font-mono); font-weight: 700; margin-bottom: 0.6rem;">
+            ⚡ Circuit Breaker & Backup Chain
+          </div>
+          <div id="circuit-breaker-container" style="font-family: var(--font-mono); font-size: 0.8rem;">
+            Loading circuit breaker status...
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Microsoft AutoGen 4-Agent Team Inspector -->
     <section id="autogen" class="section-card">
       <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
         <div>
           <div class="section-badge">Microsoft AutoGen Framework (POST /api/autogen)</div>
           <h2>Microsoft AutoGen Multi-Agent Collaboration Team</h2>
-          <p>Watch 4 specialized autonomous agents (Sommelier, Inventory, Chemist, Compliance) collaborate in real time.</p>
+          <p>Watch 4 specialized AI agents (Sommelier, Inventory, Chemist, Compliance) collaborate in real time.</p>
         </div>
         <button id="btn-trigger-autogen" class="btn-primary" style="background: linear-gradient(135deg, var(--accent-purple), #8B5CF6); color: #fff;">
-          🏢 Execute AutoGen 4-Agent Collaboration
+          🏢 Execute AutoGen 4-Agent Team
         </button>
       </div>
 
-      <div class="autogen-team-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+      <div class="autogen-team-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
         <div class="agent-card" style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(192, 132, 252, 0.3); border-radius: 8px; padding: 1rem;">
           <div style="color: var(--gold-primary); font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem;">1. SommelierAgent</div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Extracts scent targets & luxury accords from natural language prompts.</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Extracts scent targets & royal Indian accords.</div>
         </div>
         <div class="agent-card" style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 1rem;">
           <div style="color: var(--accent-cyan); font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem;">2. InventoryAgent</div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Queries SQL DB to verify stock counts & raw bottle availability.</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Queries SQL database to verify bottle stock.</div>
         </div>
         <div class="agent-card" style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 8px; padding: 1rem;">
           <div style="color: var(--accent-green); font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem;">3. ChemistAgent</div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Calculates Extrait de Parfum compound oil ratios (% top/heart/base).</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Calculates pure Attar oil compound ratios.</div>
         </div>
         <div class="agent-card" style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 8px; padding: 1rem;">
           <div style="color: var(--accent-danger); font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem;">4. ComplianceAgent</div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Validates IFRA 51st Amendment allergen limits (<0.5% max limit).</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Validates IFRA allergen safety limits (<0.5% max).</div>
         </div>
       </div>
 
       <!-- AutoGen Live Output Display Box -->
       <div id="autogen-output-box" class="react-steps-box hidden" style="max-height: 400px; overflow-y: auto; background: #0A0D14;">
-        <div style="color: var(--gold-primary); font-weight: 700; margin-bottom: 0.8rem;">[Microsoft AutoGen GroupChat Collaboration Log]</div>
+        <div style="color: var(--gold-primary); font-weight: 700; margin-bottom: 0.8rem;">[Microsoft AutoGen Team Collaboration Log]</div>
         <div id="autogen-trace-content"></div>
       </div>
     </section>
 
-    <!-- Section 3: Catalog & Scent Vectors Matrix -->
-    <section id="catalog" class="section-card">
-      <div class="section-header">
-        <div class="section-badge">Vector DB + Relational Catalog</div>
-        <h2>Fragrance Catalog & 6D Vector Space</h2>
-        <p>Inspect real-time stock levels, top/heart/base note pyramids, and 6-dimensional scent accord vectors.</p>
+    <!-- Section 5: LLMOps Evals & Security Red-Teaming Inspector -->
+    <section id="evals-inspector" class="section-card">
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <div class="section-badge">Ragas Quality Benchmarks + Security Red-Teaming</div>
+          <h2>AI Quality Evals & Security Red-Team Audit</h2>
+          <p>Run automated quality benchmark evaluations and security red-team audits with 1 click.</p>
+        </div>
+        <div style="display: flex; gap: 0.8rem;">
+          <button id="btn-run-evals" class="btn-primary" style="background: linear-gradient(135deg, var(--accent-cyan), #0284C7); color: #fff;">
+            📊 Run Ragas Quality Evals
+          </button>
+          <button id="btn-run-redteam" class="btn-primary" style="background: linear-gradient(135deg, var(--accent-danger), #DC2626); color: #fff;">
+            🛡 Run Security Audit
+          </button>
+        </div>
       </div>
 
-      <div class="catalog-filters">
-        <button class="filter-btn active" data-filter="all">All Fragrances</button>
-        <button class="filter-btn" data-filter="Woody Oriental">Woody Oriental</button>
-        <button class="filter-btn" data-filter="Citrus Fresh">Citrus Fresh</button>
-        <button class="filter-btn" data-filter="Gourmand Oriental">Gourmand Oriental</button>
-        <button class="filter-btn" data-filter="Floral Luxury">Floral Luxury</button>
+      <div id="evals-output-box" class="react-steps-box hidden" style="max-height: 350px; overflow-y: auto; background: #0A0D14;">
+        <div id="evals-trace-content"></div>
+      </div>
+    </section>
+
+    <!-- Section 6: Catalog & Scent Vectors Matrix -->
+    <section id="catalog" class="section-card">
+      <div class="section-header">
+        <div class="section-badge">Vector Database + Indian Perfume Catalog</div>
+        <h2>Indian Luxury Perfume Catalog & 6D Scent Vectors</h2>
+        <p>Inspect real-time stock levels, note pyramids, and 6-dimensional scent accord vectors.</p>
       </div>
 
       <div id="catalog-grid" class="catalog-grid">
         <!-- Dynamic Product Cards Injected Here -->
-      </div>
-    </section>
-
-    <!-- Section 4: Interactive Scent Quiz -->
-    <section id="quiz" class="section-card">
-      <div class="section-header">
-        <div class="section-badge">Knowledge Graph + Quiz Engine</div>
-        <h2>Bespoke Scent Finder Quiz</h2>
-        <p>Select your desired mood and season to compute an instant vector similarity match.</p>
-      </div>
-
-      <div class="quiz-grid">
-        <div class="quiz-step">
-          <label>1. Desired Mood</label>
-          <select id="quiz-mood" class="select-input">
-            <option value="Warm, Resinous & Enveloping">Warm, Resinous & Enveloping</option>
-            <option value="Uplifting, Bright & Crisp">Uplifting, Bright & Crisp</option>
-            <option value="Romantic, Powdery & Elegant">Romantic, Powdery & Elegant</option>
-            <option value="Sensual, Sweet & Comforting">Sensual, Sweet & Comforting</option>
-          </select>
-        </div>
-
-        <div class="quiz-step">
-          <label>2. Preferred Season</label>
-          <select id="quiz-season" class="select-input">
-            <option value="Autumn">Autumn</option>
-            <option value="Winter">Winter</option>
-            <option value="Spring">Spring</option>
-            <option value="Summer">Summer</option>
-          </select>
-        </div>
-
-        <div class="quiz-step">
-          <label>3. Key Accord Focus</label>
-          <select id="quiz-note" class="select-input">
-            <option value="Cedarwood & Dark Oud">Cedarwood & Dark Oud</option>
-            <option value="Calabrian Bergamot & Sea Salt">Calabrian Bergamot & Sea Salt</option>
-            <option value="Bourbon Vanilla & Tonka Bean">Bourbon Vanilla & Tonka Bean</option>
-            <option value="Damask Rose & Iris">Damask Rose & Iris</option>
-          </select>
-        </div>
-      </div>
-
-      <button id="btn-run-quiz" class="btn-secondary">Compute Vector Match</button>
-
-      <div id="quiz-results" class="quiz-results-container hidden">
-        <!-- Quiz Match Cards Injected Here -->
       </div>
     </section>
 
@@ -222,7 +290,7 @@
       <div class="drawer-title">
         <span class="terminal-icon">⚡</span> FDE Operations & LLM Gateway Inspector
       </div>
-      <button id="close-drawer" class="btn-close">&times;</button>
+      <button id="close-drawer" class="btn-close" onclick="document.getElementById('fde-drawer').classList.remove('open')">&times;</button>
     </div>
 
     <div class="drawer-content">
@@ -269,7 +337,7 @@
             </thead>
             <tbody id="trace-tbody">
               <tr>
-                <td colspan="6" class="text-center">No trace data collected yet. Run a prompt in the Sommelier!</td>
+                <td colspan="6" class="text-center">No trace data collected yet. Send a request in the assistant!</td>
               </tr>
             </tbody>
           </table>
@@ -280,7 +348,7 @@
 
   <footer class="footer">
     <div class="footer-content">
-      <p>AURA PERFUMERY — Forward Deployed Engineering (FDE) Reference Application</p>
+      <p>AURA ROYAL PERFUMERY INDIA — Forward Deployed Engineering (FDE) Reference Application</p>
       <p class="footer-tech">Stack: LLM Gateway | Hybrid Vector RAG | Order OMS | ReAct Multi-Agent Tools | AutoGen Team | Telemetry</p>
     </div>
   </footer>

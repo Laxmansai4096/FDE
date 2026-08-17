@@ -1,80 +1,89 @@
 ================================================================================
-AURA PERFUMERY — FORWARD DEPLOYED ENGINEER (FDE) USECASE OVERVIEW & REQUIREMENTS
-(info.txt)
+AURA ROYAL PERFUMERY INDIA — USECASE OVERVIEW & REQUIREMENTS SPECIFICATION (info.txt)
 ================================================================================
+Client: AURA Royal Perfumery India (Haute Indian Fragrances & Olfactory Intelligence)
+Target Candidate Role: Forward Deployed Engineer (FDE) / Senior AI Solutions Architect
+Target Interview Track: Microsoft / Palantir / Amazon FDE Technical Interviews
 
 --------------------------------------------------------------------------------
-1. WHAT IS THIS USECASE ABOUT?
+1. PROJECT BACKGROUND & BUSINESS CONTEXT
 --------------------------------------------------------------------------------
-This usecase represents a full-scale enterprise Forward Deployed Engineering (FDE) 
-solution built for a luxury haute parfumerie client ("AURA Perfumery"). 
+AURA Royal Perfumery India is a premier luxury fragrance house specializing in bespoke 
+Indian attars, rare botanical extraits, and royal accords (Assam Oud, Sacred Mysore 
+Sandalwood, Kashmir Saffron, Kannauj Damask Rose, Malabar Citrus, Khus Vetiver).
 
-As a Forward Deployed Engineer (FDE), your role is to bridge the gap between high-level 
-client business objectives (e-commerce conversion, bespoke scent formulation, online 
-order fulfillment & customer support) and production-ready enterprise AI infrastructure 
-(LLM Gateway, Hybrid Vector/Relational RAG, Order OMS Integration, Autonomous ReAct 
-Tool Calling, Model Context Protocol, and Telemetry Observability).
-
-
---------------------------------------------------------------------------------
-2. WHAT REAL-WORLD ENTERPRISE PROBLEMS IS IT SOLVING?
---------------------------------------------------------------------------------
-
-PROBLEM 1: Customer Support Friction for E-Commerce Orders & Tracking
-- Issue: Customers call support centers or abandon chats asking "Where is my order?" 
-  or "Cancel my order", driving up customer support operational costs.
-- Solution: An AI Customer Support Assistant integrated with an Order Management System 
-  (OMS) that places orders, tracks shipments (DHL/FedEx), and cancels processing orders 
-  autonomously while updating relational SQL stock.
-
-PROBLEM 2: Customer Confusion Over Complex Olfactory Terminology
-- Issue: Online shoppers struggle to connect emotional desires ("warm cozy evening spray") 
-  to scientific fragrance notes (Cardamom, Smoked Cedarwood, Labdanum).
-- Solution: A natural language AI Olfactory Sommelier using a 6D Scent Accord Vector Space 
-  [Citrus, Woody, Floral, Oriental, Gourmand, Fresh].
-
-PROBLEM 3: LLM Hallucinations & Out-of-Stock Product Recommendations
-- Issue: Off-the-shelf LLMs frequently recommend discontinued or out-of-stock items.
-- Solution: A Hybrid RAG Retriever that merges dense vector semantic similarity with 
-  real-time SQL inventory availability (inStock, stockCount) and metadata reranking.
-
-PROBLEM 4: Risk of Leaking Customer PII (Emails & Credit Cards) to External LLMs
-- Issue: Customers paste personal details in chat prompts, risking severe GDPR/CCPA fines.
-- Solution: An Ingress LLM Gateway Proxy that scrubs Emails ([REDACTED_EMAIL]) and 
-  Credit Cards ([REDACTED_CARD]) before prompts reach LLM APIs.
-
-PROBLEM 5: High LLM API Bills & Slow UI Latency During Peak Traffic
-- Issue: Sending every identical prompt to cloud LLMs costs thousands of dollars monthly.
-- Solution: A Semantic Vector Cache (Cosine Sim >= 0.88) returning sub-15ms cached 
-  answers at $0.00 token cost.
-
-PROBLEM 6: Complex Bespoke Custom Perfume Formulation Requirements
-- Issue: Single-prompt LLMs fail when asked to calculate precise Extrait de Parfum 
-  compound oil ratios (% top, % heart, % base notes) while adhering to IFRA allergen limits.
-- Solution: An Autonomous ReAct Multi-Agent Engine and AutoGen Collaboration Team.
-
+To scale its digital e-commerce presence, AURA deployed an AI-powered natural language 
+Scent Sommelier & Customer Support Assistant. However, early off-the-shelf LLM prototypes 
+failed enterprise readiness:
+1. PII Security Leaks: Customers submitting emails/cards had data logged in plain text.
+2. Out-of-Stock Hallucinations: LLMs recommended out-of-stock items, causing order cancels.
+3. High API Bills & Slow Speed: Duplicate customer queries cost $0.0003 each with 2-3s delay.
+4. Support Workflow Failures: LLMs could not track order shipments (ORD-8821) or execute cancellations.
+5. Vulnerability to Jailbreaks: Indirect prompt injections ("DAN mode", obfuscated emails) bypassed standard keyword filters.
 
 --------------------------------------------------------------------------------
-3. CLIENT REQUIREMENTS GIVEN (FUNCTIONAL & NON-FUNCTIONAL)
+2. THE 13 ENTERPRISE FDE REQUIREMENTS & ARCHITECTURAL SOLUTION
 --------------------------------------------------------------------------------
 
-FUNCTIONAL REQUIREMENTS:
-  [FR-01] Interactive AI Fragrance Concierge & Customer Support Assistant Chatbot.
-  [FR-02] Order Management System (OMS): Place Order, Track Order Status, Cancel Order.
-  [FR-03] Real-Time Inventory & Price Check integrated with product catalog DB.
-  [FR-04] Bespoke Custom Formula Generator creating Extrait de Parfum compound ratios.
-  [FR-05] Interactive 6D Scent Vector Accord Visualizer & Bespoke Scent Finder Quiz.
-  [FR-06] Slide-Out FDE Operations Telemetry Drawer monitoring live request spans.
-  [FR-07] Model Context Protocol (MCP) JSON-RPC 2.0 endpoint for enterprise tools.
-  [FR-08] Local Ollama LLM Router with automatic health probing and cloud fallback.
+FEATURE 1: LLM GATEWAY, DUAL-LAYER PII SCRUBBING & SECURITY GUARDRAILS (server/gateway.js)
+- Requirement: Ingress security proxy with static regex + LLM Security Classifier.
+- Functionality: Scrubs standard and obfuscated emails (`buyer [at] domain [dot] com`), cards (`[REDACTED_CARD]`), and blocks indirect prompt injections / roleplay jailbreaks.
 
-NON-FUNCTIONAL & SECURITY REQUIREMENTS:
-  [NFR-01] Latency SLA: Sub-200ms retrieval latency; sub-15ms for cached queries.
-  [NFR-02] Security & Privacy: 100% PII redaction compliance + prompt injection defense.
-  [NFR-03] Multi-Tenant Protection: Token Bucket rate limiting per X-Tenant-ID header.
-  [NFR-04] Availability SLA: 99.99% system uptime via hybrid local/cloud provider failover.
-  [NFR-05] Quality Benchmarks: Composite Ragas quality score >= 0.95.
+FEATURE 2: GATEWAY SEMANTIC VECTOR CACHING LAYER (server/gateway.js)
+- Requirement: Sub-15ms prompt response caching for repeated/paraphrased queries.
+- Functionality: Computes 6D Scent Accord Vector -> Cosine Similarity >= 0.88 -> Returns cached response in 0ms with $0.00 token cost. Bypasses PII prompts to prevent cache collision.
+
+FEATURE 3: 6D SCENT ACCORD VECTOR SPACE & HYBRID RAG (server/db.js & server/rag.js)
+- Requirement: Mathematical scent accord vector space `[Citrus, Woody, Floral, Oriental, Gourmand, Fresh]` merged with relational SQL catalog filters.
+- Indian Fragrance Catalog:
+  1. Royal Oud & Mysore Sandalwood (₹18,500 / $245) - Assam Oud & Mysore Sandalwood
+  2. Solar Malabar Citrus & Vetiver (₹14,500 / $195) - Malabar Lemon & Coastal Vetiver
+  3. Royal Kashmir Saffron & Amber (₹21,000 / $280) - Kashmir Saffron & Madagascar Vanilla
+  4. Imperial Kannauj Rose & Suede (₹19,500 / $235) - Kannauj Damask Rose & White Suede
+  5. Monsoon Vetiver & Rain Mint (₹16,000 / $210) - Earthy Indian Khus Vetiver & Petrichor
+  6. Smoked Cardamom & Incense (₹22,500 / $295) - Kerala Black Cardamom & Temple Incense
+
+FEATURE 4: HyDE & RECIPROCAL RANK FUSION (RRF) RETRIEVAL (server/hyde.js)
+- Requirement: Resolve 1-2 word vague search queries ("Fresh morning").
+- Functionality: LLM generates hypothetical ideal product description -> Fuses vector rank + sparse BM25 rank using Reciprocal Rank Fusion (RRF).
+
+FEATURE 5: AUTONOMOUS REACT MULTI-AGENT TOOL CALLING ENGINE (server/agent.js)
+- Requirement: Dynamic tool invocation loop (`[THOUGHT]` -> `[ACTION]` -> `[OBSERVATION]`).
+- Registered Tools: `tool_create_bespoke_formula`, `tool_check_inventory`, `tool_graph_harmonize`, `tool_place_order`, `tool_check_order_status`, `tool_cancel_order`.
+
+FEATURE 6: MICROSOFT AUTOGEN MULTI-AGENT COLLABORATION TEAM (server/autogen_team.js)
+- Requirement: Multi-department asynchronous team collaboration.
+- Participating Agents: `SommelierAgent`, `InventoryAgent`, `ChemistAgent`, `ComplianceAgent` (IFRA 51st Amendment check).
+
+FEATURE 7: E-COMMERCE CUSTOMER SUPPORT & ORDER OMS ENGINE (server/orders.js)
+- Requirement: Relational order state machine managing shipment tracking and order cancellations.
+- Seed Orders: `ORD-8821` (`SHIPPED`, DHL Express India, `TRK-IN-9982142`), `ORD-9430` (`PROCESSING`, FedEx India). Cancelling processing order updates status to `CANCELLED` and restores catalog stock count.
+
+FEATURE 8: AZURE APIM MULTI-TENANT RATE LIMITING & SAFETY (server/azure_gateway.js)
+- Requirement: Tenant-isolated token bucket rate limiting (`X-Tenant-ID`) + Azure AI Content Safety moderation.
+
+FEATURE 9: MODEL CONTEXT PROTOCOL (MCP) JSON-RPC 2.0 SERVER (server/mcp.js)
+- Requirement: Standard JSON-RPC 2.0 interface for Claude Desktop and B2B client integrations.
+
+FEATURE 10: LLM EVALUATION SUITE & RAGAS QUALITY METRICS (server/evals.js)
+- Requirement: Quantitative quality benchmarks (Faithfulness: 0.98, Answer Relevance: 0.978, Ragas Composite Score: 0.971).
+
+FEATURE 11: ADVERSARIAL RED-TEAMING SECURITY AUDIT SUITE (server/redteam.js)
+- Requirement: Automated security attack harness verifying 100.0% Security Defense Pass Rate.
+
+FEATURE 12: ENTERPRISE DATA INGESTION ETL PIPELINE (server/etl.js)
+- Requirement: Normalizes raw product sheets, computes 6D accord vectors, and updates knowledge graphs.
+
+FEATURE 13: REAL-TIME TELEMETRY & SPAN COST ACCOUNTING (server/telemetry.js)
+- Requirement: OpenTelemetry request span tracer recording latency, token consumption, dollar spend USD, and routing traces.
+
+--------------------------------------------------------------------------------
+3. CLEAR INDIAN ENGLISH USER INTERFACE (public/index.html & public/app.js)
+--------------------------------------------------------------------------------
+- Clean, relatable Indian English UI without obscure foreign words.
+- Primary Action Button: `Send Request` (or `🤖 Run Autonomous Agent`).
+- Interactive Visual Inspection Panels for live Order OMS, Gateway Load Balancer Outage Failover, AutoGen Team Execution, and Ragas Quality Evals.
 
 ================================================================================
-END OF USECASE OVERVIEW & REQUIREMENTS DOCUMENT (info.txt)
+END OF USECASE SPECIFICATION DOCUMENT (info.txt)
 ================================================================================

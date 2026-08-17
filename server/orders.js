@@ -1,138 +1,154 @@
 /**
- * AURA PERFUMERY - Relational Order Management & Customer Support Engine
- * 
- * FDE Concept: In real-world enterprise retail AI systems, AI assistants don't just recommend products;
- * they interface directly with ERP / E-Commerce Order Management Systems (OMS) to:
- * 1. Place Orders (allocating SQL stock, generating Order IDs & tracking numbers).
- * 2. Track Order Status (checking logistics carriers like DHL/FedEx).
- * 3. Cancel Orders (enforcing business policies like cancellation windows & restocking stock).
+ * AURA PERFUMERY - Relational Order Management System (OMS) (server/orders.js)
  */
 
 const { FRAGRANCE_CATALOG } = require('./db');
 
-// Mock Relational Orders Database Table
-const ORDERS_DATABASE = [
-  {
-    orderId: "ORD-8821",
-    customerEmail: "[REDACTED_EMAIL]",
-    productId: "perfume_001",
-    productName: "L'Ombre du Bois",
-    quantity: 1,
-    size: "100ml",
-    totalPrice: 245,
-    status: "SHIPPED",
-    carrier: "DHL Express France",
-    trackingNumber: "TRK-FR-9982142",
-    estimatedDelivery: "2026-08-19",
-    createdAt: "2026-08-16T14:30:00Z"
-  },
-  {
-    orderId: "ORD-9430",
-    customerEmail: "[REDACTED_EMAIL]",
-    productId: "perfume_003",
-    productName: "Velours d'Ambre",
-    quantity: 1,
-    size: "100ml",
-    totalPrice: 280,
-    status: "PROCESSING",
-    carrier: "FedEx International",
-    trackingNumber: "TRK-FX-3392810",
-    estimatedDelivery: "2026-08-21",
-    createdAt: "2026-08-17T08:15:00Z"
-  }
-];
-
-class OrderManagementEngine {
-  // 1. Place New Order (Integrates with Relational Inventory)
-  placeOrder(productId, size = "100ml", quantity = 1) {
-    const product = FRAGRANCE_CATALOG.find(p => p.id === productId || p.name.toLowerCase().includes(productId.toLowerCase()));
-    
-    if (!product) {
-      return { success: false, message: `Product '${productId}' not found in catalog.` };
-    }
-
-    if (!product.inStock || product.stockCount < quantity) {
-      return { success: false, message: `Product '${product.name}' is currently out of stock or insufficient inventory.` };
-    }
-
-    // Deduct stock count from relational catalog
-    product.stockCount -= quantity;
-    if (product.stockCount <= 0) product.inStock = false;
-
-    const newOrderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newTracking = `TRK-AURA-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const newOrder = {
-      orderId: newOrderId,
-      customerEmail: "[REDACTED_EMAIL]",
-      productId: product.id,
-      productName: product.name,
-      quantity,
-      size,
-      totalPrice: product.price * quantity,
-      status: "PROCESSING",
-      carrier: "DHL Express Luxury Atelier",
-      trackingNumber: newTracking,
-      estimatedDelivery: "Delivery in 2-3 Business Days",
-      createdAt: new Date().toISOString()
-    };
-
-    ORDERS_DATABASE.unshift(newOrder);
-
-    return {
-      success: true,
-      message: `Order ${newOrderId} placed successfully!`,
-      order: newOrder
-    };
+class OrderManagementSystem {
+  constructor() {
+    // Relational Database Orders Table initialized with active customer orders
+    this.orders = [
+      {
+        orderId: "ORD-8821",
+        productId: "perfume_001",
+        productName: "Royal Oud & Mysore Sandalwood",
+        size: "100ml",
+        quantity: 1,
+        totalPrice: 245,
+        priceInRupees: "₹18,500",
+        status: "SHIPPED",
+        carrier: "DHL Express India",
+        trackingNumber: "TRK-IN-9982142",
+        orderDate: "2026-08-15T10:30:00Z",
+        estimatedDelivery: "2026-08-18T18:00:00Z"
+      },
+      {
+        orderId: "ORD-9430",
+        productId: "perfume_003",
+        productName: "Royal Kashmir Saffron & Amber",
+        size: "100ml",
+        quantity: 1,
+        totalPrice: 280,
+        priceInRupees: "₹21,000",
+        status: "PROCESSING",
+        carrier: "FedEx Express India",
+        trackingNumber: "TRK-IN-4410293",
+        orderDate: "2026-08-16T14:15:00Z",
+        estimatedDelivery: "2026-08-19T14:00:00Z"
+      }
+    ];
   }
 
-  // 2. Query Order Status
+  // 1. Check Order Tracking Status
   checkOrderStatus(orderId) {
-    const cleanId = orderId.toUpperCase().trim();
-    const order = ORDERS_DATABASE.find(o => o.orderId === cleanId);
+    const cleanId = String(orderId).trim().toUpperCase();
+    const order = this.orders.find(o => o.orderId === cleanId);
 
     if (!order) {
       return {
-        success: false,
-        message: `Order '${orderId}' not found in Order Management System. Please verify Order ID format (e.g. ORD-8821).`
+        found: false,
+        message: `Order '${cleanId}' not found in Order Management System. Please check your order ID.`
       };
     }
 
     return {
-      success: true,
+      found: true,
       orderId: order.orderId,
       productName: order.productName,
       status: order.status,
       carrier: order.carrier,
       trackingNumber: order.trackingNumber,
       estimatedDelivery: order.estimatedDelivery,
-      totalPrice: `$${order.totalPrice}`
+      message: `[Customer Support Assistant] Order **${order.orderId}** for **${order.productName}** is currently **${order.status}**. Carrier: ${order.carrier}. Tracking Code: \`${order.trackingNumber}\`. Estimated Delivery: ${new Date(order.estimatedDelivery).toLocaleDateString('en-IN')}.`
     };
   }
 
-  // 3. Cancel Existing Order
+  // 2. Place New Order
+  placeOrder(productQuery, size = "100ml", quantity = 1) {
+    const lowerQuery = String(productQuery).toLowerCase();
+    
+    // Find matching catalog product
+    const product = FRAGRANCE_CATALOG.find(p => 
+      p.name.toLowerCase().includes(lowerQuery) || 
+      lowerQuery.includes(p.name.toLowerCase()) ||
+      p.id === productQuery
+    ) || FRAGRANCE_CATALOG[0]; // Default to Royal Oud & Mysore Sandalwood
+
+    if (!product.inStock || product.stockCount < quantity) {
+      return {
+        success: false,
+        message: `Product '${product.name}' is currently out of stock in our atelier inventory.`
+      };
+    }
+
+    // Deduct Stock from Catalog
+    product.stockCount -= quantity;
+    if (product.stockCount <= 0) {
+      product.inStock = false;
+    }
+
+    const newOrderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const trackingNum = `TRK-AURA-${Math.floor(100000 + Math.random() * 900000)}`;
+    const totalPrice = product.price * quantity;
+    const rupeeTotal = `₹${(18500 * quantity).toLocaleString('en-IN')}`;
+
+    const newOrder = {
+      orderId: newOrderId,
+      productId: product.id,
+      productName: product.name,
+      size,
+      quantity,
+      totalPrice,
+      priceInRupees: rupeeTotal,
+      status: "PROCESSING",
+      carrier: "DHL Express India",
+      trackingNumber: trackingNum,
+      orderDate: new Date().toISOString(),
+      estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+    };
+
+    this.orders.unshift(newOrder);
+
+    return {
+      success: true,
+      order: newOrder,
+      message: `🎉 Order **${newOrderId}** placed successfully! Item: **${product.name}** (${size}). Total: $${totalPrice} (${rupeeTotal}). Carrier: DHL Express India (\`${trackingNum}\`). Inventory remaining: ${product.stockCount} units.`
+    };
+  }
+
+  // 3. Cancel Order
   cancelOrder(orderId) {
-    const cleanId = orderId.toUpperCase().trim();
-    const order = ORDERS_DATABASE.find(o => o.orderId === cleanId);
+    const cleanId = String(orderId).trim().toUpperCase();
+    const order = this.orders.find(o => o.orderId === cleanId);
 
     if (!order) {
-      return { success: false, message: `Order '${orderId}' not found.` };
+      return {
+        success: false,
+        message: `Order '${cleanId}' not found.`
+      };
     }
 
     if (order.status === "SHIPPED" || order.status === "DELIVERED") {
       return {
         success: false,
-        message: `Order ${orderId} cannot be cancelled because it is already '${order.status}'. Carrier tracking: ${order.trackingNumber}. Please initiate a return upon delivery.`
+        status: order.status,
+        message: `Order **${order.orderId}** has already been **${order.status}** via ${order.carrier} (Tracking: \`${order.trackingNumber}\`). Under policy, shipped orders cannot be cancelled online. Please contact customer care for returns.`
       };
     }
 
     if (order.status === "CANCELLED") {
-      return { success: false, message: `Order ${orderId} is already cancelled.` };
+      return {
+        success: false,
+        status: "CANCELLED",
+        message: `Order **${order.orderId}** is already cancelled.`
+      };
     }
 
-    // Update status & restore relational stock
+    // Update state to CANCELLED
     order.status = "CANCELLED";
-    const product = FRAGRANCE_CATALOG.find(p => p.id === order.productId);
+
+    // Restore Stock to Catalog
+    const product = FRAGRANCE_CATALOG.find(p => p.id === order.productId || p.name === order.productName);
     if (product) {
       product.stockCount += order.quantity;
       product.inStock = true;
@@ -140,16 +156,15 @@ class OrderManagementEngine {
 
     return {
       success: true,
-      message: `Order ${orderId} has been successfully cancelled. Refund processed to original payment method. Relational inventory restored.`,
-      order
+      orderId: order.orderId,
+      message: `Order **${order.orderId}** for **${order.productName}** has been updated to **CANCELLED**. A full refund of ${order.priceInRupees || '$' + order.totalPrice} has been issued to your payment method. Atelier inventory has been restored (+${order.quantity} unit).`
     };
   }
 
-  // List all orders
   getAllOrders() {
-    return ORDERS_DATABASE;
+    return this.orders;
   }
 }
 
-const orderEngine = new OrderManagementEngine();
+const orderEngine = new OrderManagementSystem();
 module.exports = orderEngine;

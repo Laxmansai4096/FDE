@@ -1,5 +1,5 @@
 /**
- * AURA PERFUMERY - FDE Enterprise Application Server (Order Support Engine Integrated)
+ * AURA PERFUMERY - FDE Enterprise Application Server (Gateway Load Balancer & Failover Integrated)
  */
 
 const express = require('express');
@@ -28,7 +28,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// 1. Chat & Scent Sommelier Endpoint (Ollama Hybrid Router + Customer Support Intent + APIM + RAG)
+// 1. Chat & Scent Sommelier Endpoint (Load Balancing + Failover + Guardrails + RAG)
 app.post('/api/chat', async (req, res) => {
   const startTime = Date.now();
   const { query, filters = {} } = req.body;
@@ -112,54 +112,63 @@ app.post('/api/chat', async (req, res) => {
   const ragResult = ragEngine.retrieve(guardrailStatus.sanitizedQuery, filters);
   const { queryVector, retrieved } = ragResult;
 
-  // Step C: LLM Gateway Semantic Cache Check (Bypassed if PII guardrails were flagged)
-  if (!guardrailStatus.flagged) {
-    const cacheResult = gateway.checkCache(queryVector);
-    if (cacheResult.hit) {
-      const latencyMs = Date.now() - startTime;
-      const trace = telemetry.recordTrace({
-        query,
-        sanitizedQuery: guardrailStatus.sanitizedQuery,
-        provider: "Gateway-Semantic-Cache",
-        model: "vector-similarity-cache",
-        cacheHit: true,
-        latencyMs,
-        promptTokens: 0,
-        completionTokens: 0,
-        retrievedProducts: cacheResult.retrievedProducts,
-        guardrailStatus,
-        response: cacheResult.response
-      });
+  // Step C: Dynamic Route & Load Balancer Resolution
+  const routeDecision = gateway.resolveDynamicRoute(queryVector, guardrailStatus.flagged);
 
-      return res.json({
-        response: cacheResult.response,
-        retrievedProducts: cacheResult.retrievedProducts,
-        cacheHit: true,
-        cacheSimilarity: cacheResult.similarity,
-        guardrailStatus,
-        telemetryTrace: trace
-      });
+  if (routeDecision.routeType === "CACHE_HIT") {
+    const latencyMs = Date.now() - startTime;
+    const trace = telemetry.recordTrace({
+      query,
+      sanitizedQuery: guardrailStatus.sanitizedQuery,
+      provider: routeDecision.providerUsed,
+      model: routeDecision.modelUsed,
+      cacheHit: true,
+      latencyMs,
+      promptTokens: 0,
+      completionTokens: 0,
+      retrievedProducts: routeDecision.cacheResult.retrievedProducts,
+      guardrailStatus,
+      response: routeDecision.cacheResult.response
+    });
+
+    return res.json({
+      response: routeDecision.cacheResult.response,
+      retrievedProducts: routeDecision.cacheResult.retrievedProducts,
+      cacheHit: true,
+      cacheSimilarity: routeDecision.cacheResult.similarity,
+      providerUsed: routeDecision.providerUsed,
+      modelUsed: routeDecision.modelUsed,
+      routingTrace: routeDecision.routingTrace,
+      guardrailStatus,
+      telemetryTrace: trace
+    });
+  }
+
+  // Step D: Hybrid LLM Generation (Local Ollama Router OR Cloud Provider Failover)
+  let providerName = routeDecision.providerUsed;
+  let modelName = routeDecision.modelUsed;
+  let generatedResponse = null;
+
+  // Probe Local Ollama if healthy and circuit breaker is not in simulated failover
+  if (!routeDecision.failoverTriggered) {
+    const ollamaResult = await ollamaRouter.generateResponse(guardrailStatus.sanitizedQuery, "You are AURA Olfactory Sommelier.");
+    if (ollamaResult.usedLocal && ollamaResult.response) {
+      generatedResponse = ollamaResult.response;
+      providerName = ollamaResult.provider;
+      modelName = ollamaResult.model;
     }
   }
 
-  // Step D: Hybrid LLM Generation (Ollama Local -> Cloud Gemini Fallback)
-  let providerName = "Gemini-1.5-Flash (Primary)";
-  let modelName = "gemini-1.5-flash";
-  let generatedResponse = null;
-
-  const ollamaResult = await ollamaRouter.generateResponse(guardrailStatus.sanitizedQuery, "You are AURA Olfactory Sommelier.");
-  if (ollamaResult.usedLocal && ollamaResult.response) {
-    generatedResponse = ollamaResult.response;
-    providerName = ollamaResult.provider;
-    modelName = ollamaResult.model;
-  } else {
+  if (!generatedResponse) {
     generatedResponse = gateway.generateDomainResponse(guardrailStatus.sanitizedQuery, retrieved);
+    if (routeDecision.failoverTriggered) {
+      generatedResponse = `[AUTOMATIC FAILOVER NOTICE: Primary cloud LLM endpoint suffered a simulated outage. Traffic failed over to ${providerName}].\n\n` + generatedResponse;
+    }
   }
 
   const promptTokens = Math.round(guardrailStatus.sanitizedQuery.length / 4) + 120;
   const completionTokens = Math.round(generatedResponse.length / 4);
 
-  // FDE Fine-Tuning: Pass wasFlagged parameter to storeInCache so PII-redacted prompts are not cached
   gateway.storeInCache(guardrailStatus.sanitizedQuery, queryVector, generatedResponse, retrieved, guardrailStatus.flagged);
 
   const latencyMs = Date.now() - startTime;
@@ -184,9 +193,22 @@ app.post('/api/chat', async (req, res) => {
     cacheHit: false,
     providerUsed: providerName,
     modelUsed: modelName,
+    failoverTriggered: routeDecision.failoverTriggered,
+    routingTrace: routeDecision.routingTrace,
     guardrailStatus,
     telemetryTrace: trace
   });
+});
+
+// Gateway Status & Load Balancer Diagnostic API
+app.get('/api/gateway/status', (req, res) => {
+  res.json(gateway.getDiagnosticReport());
+});
+
+// Gateway Simulate Outage & Circuit Breaker Failover API
+app.post('/api/gateway/simulate-failover', (req, res) => {
+  const { enable = true } = req.body;
+  res.json(gateway.setSimulatedOutage(enable));
 });
 
 // Customer Support REST APIs

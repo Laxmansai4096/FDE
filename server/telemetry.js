@@ -1,104 +1,78 @@
 /**
- * AURA PERFUMERY - FDE Telemetry & Observability Engine
- * 
- * FDE Concept: Production enterprise AI platforms require robust observability:
- * 1. Trace tracking: Following a request from Gateway -> Guardrail -> Cache -> DB RAG -> LLM -> Client.
- * 2. Token & Cost Accounting: Calculating input/output tokens and cost in USD.
- * 3. Latency breakdown: Time spent in Guardrails, RAG vector retrieval, and LLM inference.
- * 4. Audit Log: Flagging PII scrubs, prompt injections, and low confidence fallbacks.
+ * AURA PERFUMERY - OpenTelemetry Request Span & Cost Accounting Engine
  */
 
-class TelemetryEngine {
+class TelemetryCollector {
   constructor() {
     this.traces = [];
     this.totalRequests = 0;
     this.cacheHits = 0;
     this.totalTokens = 0;
-    this.totalCostUSD = 0;
-    this.guardrailBreaches = 0;
+    this.totalCostUSD = 0.0;
   }
 
-  // Record a complete span trace for an incoming query
-  recordTrace({
-    query,
-    sanitizedQuery,
-    provider,
-    model,
-    cacheHit,
-    latencyMs,
-    promptTokens,
-    completionTokens,
-    retrievedProducts,
-    guardrailStatus,
-    response
-  }) {
-    const traceId = `trc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    const cost = Number(((promptTokens * 0.0000005) + (completionTokens * 0.0000015)).toFixed(6));
+  recordTrace(traceData) {
+    const traceId = 'trc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+    const timestamp = new Date().toISOString();
 
-    this.totalRequests += 1;
-    if (cacheHit) this.cacheHits += 1;
-    this.totalTokens += (promptTokens + completionTokens);
-    this.totalCostUSD += cost;
-    if (guardrailStatus.flagged) this.guardrailBreaches += 1;
+    const promptTokens = traceData.promptTokens || 0;
+    const completionTokens = traceData.completionTokens || 0;
+    const totalTokens = promptTokens + completionTokens;
 
-    const traceRecord = {
+    // Cost Model: $0.0000005 per token (Gemini 1.5 Flash / SLM avg rate)
+    const costUSD = traceData.cacheHit ? 0.0 : Number((totalTokens * 0.0000005).toFixed(6));
+
+    this.totalRequests++;
+    if (traceData.cacheHit) this.cacheHits++;
+    this.totalTokens += totalTokens;
+    this.totalCostUSD += costUSD;
+
+    const trace = {
       traceId,
-      timestamp: new Date().toISOString(),
-      query,
-      sanitizedQuery,
-      provider: provider || "Gemini-1.5-Flash",
-      model: model || "gemini-1.5-flash",
-      cacheHit: !!cacheHit,
-      latencyMs,
+      timestamp,
+      query: traceData.query,
+      sanitizedQuery: traceData.sanitizedQuery || traceData.query,
+      provider: traceData.provider || "Gemini-1.5-Flash (Primary)",
+      model: traceData.model || "gemini-1.5-flash",
+      cacheHit: !!traceData.cacheHit,
+      latencyMs: traceData.latencyMs || 0,
       tokens: {
         prompt: promptTokens,
         completion: completionTokens,
-        total: promptTokens + completionTokens
+        total: totalTokens
       },
-      costUSD: cost,
-      guardrailStatus,
-      retrievedCount: retrievedProducts ? retrievedProducts.length : 0,
-      retrievedProducts: retrievedProducts ? retrievedProducts.map(p => ({ id: p.id, name: p.name, score: p.vectorScore })) : [],
-      responseSnippet: response ? (response.length > 80 ? response.substring(0, 80) + "..." : response) : ""
+      costUSD,
+      guardrailStatus: traceData.guardrailStatus || { flagged: false, reasons: [] },
+      routingTrace: traceData.routingTrace || [],
+      retrievedCount: traceData.retrievedProducts ? traceData.retrievedProducts.length : 0,
+      retrievedProducts: traceData.retrievedProducts || [],
+      responseSnippet: traceData.response ? traceData.response.substring(0, 100) + '...' : ''
     };
 
-    // Store max 50 recent traces
-    this.traces.unshift(traceRecord);
-    if (this.traces.length > 50) {
+    // Keep max 50 recent trace spans to avoid memory overflow
+    if (this.traces.length >= 50) {
       this.traces.pop();
     }
+    this.traces.unshift(trace);
 
-    return traceRecord;
+    return trace;
   }
 
-  // Get aggregated operational metrics for FDE Dashboard
   getMetrics() {
-    const cacheHitRate = this.totalRequests > 0 ? ((this.cacheHits / this.totalRequests) * 100).toFixed(1) : 0;
-    const avgLatency = this.traces.length > 0 
-      ? Math.round(this.traces.reduce((acc, t) => acc + t.latencyMs, 0) / this.traces.length)
-      : 0;
+    const cacheHitRate = this.totalRequests > 0 
+      ? ((this.cacheHits / this.totalRequests) * 100).toFixed(1) 
+      : "0.0";
 
     return {
       totalRequests: this.totalRequests,
       cacheHits: this.cacheHits,
-      cacheHitRate: `${cacheHitRate}%`,
+      cacheHitRate: Number(cacheHitRate),
       totalTokens: this.totalTokens,
-      totalCostUSD: `$${this.totalCostUSD.toFixed(5)}`,
-      guardrailBreaches: this.guardrailBreaches,
-      avgLatencyMs: `${avgLatency}ms`,
-      recentTraces: this.traces.slice(0, 15)
+      totalCostUSD: Number(this.totalCostUSD.toFixed(5)),
+      traces: this.traces
     };
-  }
-
-  clear() {
-    this.traces = [];
-    this.totalRequests = 0;
-    this.cacheHits = 0;
-    this.totalTokens = 0;
-    this.totalCostUSD = 0;
-    this.guardrailBreaches = 0;
   }
 }
 
-const telemetry = new TelemetryEngine();
+const telemetry = new TelemetryCollector();
 module.exports = telemetry;
