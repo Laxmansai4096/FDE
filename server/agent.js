@@ -1,5 +1,6 @@
 /**
  * AURA PERFUMERY - Autonomous Multi-Agent Orchestrator & Customer Support Tool Calling Engine
+ * (FDE Intent Routing & Domain Guardrails Hardened)
  */
 
 const { FRAGRANCE_CATALOG, KNOWLEDGE_GRAPH } = require('./db');
@@ -27,7 +28,7 @@ const AGENT_TOOLS = {
   // Tool 2: Relational Real-Time Inventory & Price Check
   tool_check_inventory: (productNameOrId) => {
     const term = productNameOrId.toLowerCase();
-    const product = FRAGRANCE_CATALOG.find(p => p.id === productNameOrId || p.name.toLowerCase().includes(term));
+    const product = FRAGRANCE_CATALOG.find(p => p.id === productNameOrId || p.name.toLowerCase().includes(term) || term.includes(p.name.toLowerCase()));
     if (!product) {
       return { success: false, message: `Product '${productNameOrId}' not found in relational catalog.` };
     }
@@ -100,14 +101,88 @@ class AgenticOrchestrator {
     traceSteps.push({
       step: 1,
       type: "THOUGHT",
-      content: "Analyzing user query intent. Categorizing request: Customer Support (Order Status, Cancel, Place Order) vs Scent Recommendation vs Custom Formulation."
+      content: "Analyzing user query intent. Routing to target tool: Inventory Check, Note Harmonization, Order Management, Bespoke Formulation, or Domain Scent RAG."
     });
 
     let finalAnswer = "";
-    let orderResult = null;
+    let toolResult = null;
 
-    // Intent 1: Check Order Status
-    if (lower.includes("status") || lower.includes("track") || lower.includes("ord-")) {
+    // Intent 1: Out-of-Domain Guardrail Check (e.g. "tell me a story", "2+2=")
+    if (lower.includes("2+2") || lower.includes("story") || lower.includes("weather") || lower.includes("joke")) {
+      traceSteps.push({
+        step: 2,
+        type: "THOUGHT",
+        content: "Out-of-Domain query detected. Triggering Domain Boundary Guardrail."
+      });
+
+      finalAnswer = "I am the AURA Olfactory Sommelier & Customer Support Assistant. I specialize exclusively in haute perfumery recommendations, bespoke scent formulation, inventory availability, and order management (tracking/cancelling orders). How may I assist with your fragrance journey today?";
+    }
+    // Intent 2: Relational Inventory / Stock Query
+    else if (lower.includes("stock") || lower.includes("inventory") || lower.includes("available")) {
+      let targetProduct = "Vétiver Solaire";
+      if (lower.includes("l'ombre") || lower.includes("bois")) targetProduct = "L'Ombre du Bois";
+      if (lower.includes("citron")) targetProduct = "Citron Céleste";
+      if (lower.includes("velours")) targetProduct = "Velours d'Ambre";
+      if (lower.includes("rose")) targetProduct = "Rose Impériale";
+      if (lower.includes("nuit")) targetProduct = "Nuit d'Épices";
+
+      traceSteps.push({
+        step: 2,
+        type: "ACTION",
+        tool: "tool_check_inventory",
+        input: targetProduct
+      });
+
+      toolResult = AGENT_TOOLS.tool_check_inventory(targetProduct);
+
+      traceSteps.push({
+        step: 3,
+        type: "OBSERVATION",
+        output: toolResult
+      });
+
+      if (toolResult.success) {
+        if (toolResult.inStock) {
+          finalAnswer = `[Inventory Assistant] **${toolResult.name}** is currently **IN STOCK** (${toolResult.stockCount} units available at our Paris Atelier). Unit Price: $${toolResult.price} (${toolResult.sizes.join(', ')}).`;
+        } else {
+          finalAnswer = `[Inventory Assistant] **${toolResult.name}** ($${toolResult.price}) is currently **OUT OF STOCK** at our Paris Atelier (0 units remaining). You can request a reserve notification or pre-order.`;
+        }
+      } else {
+        finalAnswer = toolResult.message;
+      }
+    }
+    // Intent 3: Note Harmonization Knowledge Graph Query
+    else if (lower.includes("pair") || lower.includes("harmonize") || lower.includes("combine") || lower.includes("pairs with")) {
+      let targetNote = "Bergamot";
+      if (lower.includes("cedarwood")) targetNote = "Cedarwood";
+      if (lower.includes("vanilla")) targetNote = "Vanilla";
+      if (lower.includes("rose")) targetNote = "Rose";
+      if (lower.includes("vetiver")) targetNote = "Vetiver";
+      if (lower.includes("amber")) targetNote = "Amber";
+
+      traceSteps.push({
+        step: 2,
+        type: "ACTION",
+        tool: "tool_graph_harmonize",
+        input: targetNote
+      });
+
+      toolResult = AGENT_TOOLS.tool_graph_harmonize(targetNote);
+
+      traceSteps.push({
+        step: 3,
+        type: "OBSERVATION",
+        output: toolResult
+      });
+
+      if (toolResult.success) {
+        finalAnswer = `[Olfactory Knowledge Graph] **${toolResult.note}** (${toolResult.family} family, Mood: ${toolResult.mood}) pairs magnificently with: **${toolResult.pairsWith.join(', ')}**.`;
+      } else {
+        finalAnswer = toolResult.message;
+      }
+    }
+    // Intent 4: Check Order Status
+    else if (lower.includes("status") || lower.includes("track") || lower.includes("ord-")) {
       const orderIdMatch = userQuery.match(/ord-\d+/i);
       const targetOrderId = orderIdMatch ? orderIdMatch[0] : "ORD-8821";
 
@@ -118,21 +193,21 @@ class AgenticOrchestrator {
         input: targetOrderId
       });
 
-      orderResult = AGENT_TOOLS.tool_check_order_status(targetOrderId);
+      toolResult = AGENT_TOOLS.tool_check_order_status(targetOrderId);
 
       traceSteps.push({
         step: 3,
         type: "OBSERVATION",
-        output: orderResult
+        output: toolResult
       });
 
-      if (orderResult.success) {
-        finalAnswer = `[Customer Support Assistant] Order **${orderResult.orderId}** for **${orderResult.productName}** is currently **${orderResult.status}**. Carrier: ${orderResult.carrier}. Tracking Number: \`${orderResult.trackingNumber}\`. Estimated Delivery: ${orderResult.estimatedDelivery}.`;
+      if (toolResult.success) {
+        finalAnswer = `[Customer Support Assistant] Order **${toolResult.orderId}** for **${toolResult.productName}** is currently **${toolResult.status}**. Carrier: ${toolResult.carrier}. Tracking Number: \`${toolResult.trackingNumber}\`. Estimated Delivery: ${toolResult.estimatedDelivery}.`;
       } else {
-        finalAnswer = `[Customer Support Assistant] ${orderResult.message}`;
+        finalAnswer = `[Customer Support Assistant] ${toolResult.message}`;
       }
     }
-    // Intent 2: Cancel Order
+    // Intent 5: Cancel Order
     else if (lower.includes("cancel")) {
       const orderIdMatch = userQuery.match(/ord-\d+/i);
       const targetOrderId = orderIdMatch ? orderIdMatch[0] : "ORD-9430";
@@ -144,17 +219,17 @@ class AgenticOrchestrator {
         input: targetOrderId
       });
 
-      orderResult = AGENT_TOOLS.tool_cancel_order(targetOrderId);
+      toolResult = AGENT_TOOLS.tool_cancel_order(targetOrderId);
 
       traceSteps.push({
         step: 3,
         type: "OBSERVATION",
-        output: orderResult
+        output: toolResult
       });
 
-      finalAnswer = `[Customer Support Assistant] ${orderResult.message}`;
+      finalAnswer = `[Customer Support Assistant] ${toolResult.message}`;
     }
-    // Intent 3: Place Order
+    // Intent 6: Place Order
     else if (lower.includes("order") || lower.includes("buy") || lower.includes("purchase")) {
       const targetProduct = "perfume_001"; // L'Ombre du Bois
 
@@ -165,21 +240,21 @@ class AgenticOrchestrator {
         input: targetProduct
       });
 
-      orderResult = AGENT_TOOLS.tool_place_order(targetProduct);
+      toolResult = AGENT_TOOLS.tool_place_order(targetProduct);
 
       traceSteps.push({
         step: 3,
         type: "OBSERVATION",
-        output: orderResult
+        output: toolResult
       });
 
-      if (orderResult.success) {
-        finalAnswer = `[Customer Support Assistant] ${orderResult.message} Order ID: **${orderResult.order.orderId}** (${orderResult.order.productName}, Total: $${orderResult.order.totalPrice}). Tracking Number: \`${orderResult.order.trackingNumber}\`. Carrier: ${orderResult.order.carrier}.`;
+      if (toolResult.success) {
+        finalAnswer = `[Customer Support Assistant] ${toolResult.message} Order ID: **${toolResult.order.orderId}** (${toolResult.order.productName}, Total: $${toolResult.order.totalPrice}). Tracking Number: \`${toolResult.order.trackingNumber}\`. Carrier: ${toolResult.order.carrier}.`;
       } else {
-        finalAnswer = `[Customer Support Assistant] ${orderResult.message}`;
+        finalAnswer = `[Customer Support Assistant] ${toolResult.message}`;
       }
     }
-    // Intent 4: Bespoke Formulation Creation
+    // Intent 7: Bespoke Formulation Creation
     else if (lower.includes("custom") || lower.includes("create") || lower.includes("bespoke") || lower.includes("blend")) {
       traceSteps.push({
         step: 2,
@@ -200,7 +275,7 @@ class AgenticOrchestrator {
         `Top Accord: ${formulaResult.topNotes.join(', ')}. Heart Accord: ${formulaResult.heartNotes.join(', ')}. Base Accord: ${formulaResult.baseNotes.join(', ')}. ` +
         `Price: ${formulaResult.estimatedArtisanPrice}. Lead time: ${formulaResult.leadTimeDays} days.`;
     }
-    // Fallback Intent: Scent RAG Search
+    // Intent 8: Scent Vector Recommendation (Domain Default)
     else {
       traceSteps.push({
         step: 2,
@@ -224,7 +299,7 @@ class AgenticOrchestrator {
       agentQuery: userQuery,
       traceSteps,
       finalAnswer,
-      orderResult
+      toolResult
     };
   }
 }

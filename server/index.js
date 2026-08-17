@@ -112,32 +112,34 @@ app.post('/api/chat', async (req, res) => {
   const ragResult = ragEngine.retrieve(guardrailStatus.sanitizedQuery, filters);
   const { queryVector, retrieved } = ragResult;
 
-  // Step C: LLM Gateway Semantic Cache Check
-  const cacheResult = gateway.checkCache(queryVector);
-  if (cacheResult.hit) {
-    const latencyMs = Date.now() - startTime;
-    const trace = telemetry.recordTrace({
-      query,
-      sanitizedQuery: guardrailStatus.sanitizedQuery,
-      provider: "Gateway-Semantic-Cache",
-      model: "vector-similarity-cache",
-      cacheHit: true,
-      latencyMs,
-      promptTokens: 0,
-      completionTokens: 0,
-      retrievedProducts: cacheResult.retrievedProducts,
-      guardrailStatus,
-      response: cacheResult.response
-    });
+  // Step C: LLM Gateway Semantic Cache Check (Bypassed if PII guardrails were flagged)
+  if (!guardrailStatus.flagged) {
+    const cacheResult = gateway.checkCache(queryVector);
+    if (cacheResult.hit) {
+      const latencyMs = Date.now() - startTime;
+      const trace = telemetry.recordTrace({
+        query,
+        sanitizedQuery: guardrailStatus.sanitizedQuery,
+        provider: "Gateway-Semantic-Cache",
+        model: "vector-similarity-cache",
+        cacheHit: true,
+        latencyMs,
+        promptTokens: 0,
+        completionTokens: 0,
+        retrievedProducts: cacheResult.retrievedProducts,
+        guardrailStatus,
+        response: cacheResult.response
+      });
 
-    return res.json({
-      response: cacheResult.response,
-      retrievedProducts: cacheResult.retrievedProducts,
-      cacheHit: true,
-      cacheSimilarity: cacheResult.similarity,
-      guardrailStatus,
-      telemetryTrace: trace
-    });
+      return res.json({
+        response: cacheResult.response,
+        retrievedProducts: cacheResult.retrievedProducts,
+        cacheHit: true,
+        cacheSimilarity: cacheResult.similarity,
+        guardrailStatus,
+        telemetryTrace: trace
+      });
+    }
   }
 
   // Step D: Hybrid LLM Generation (Ollama Local -> Cloud Gemini Fallback)
@@ -157,7 +159,8 @@ app.post('/api/chat', async (req, res) => {
   const promptTokens = Math.round(guardrailStatus.sanitizedQuery.length / 4) + 120;
   const completionTokens = Math.round(generatedResponse.length / 4);
 
-  gateway.storeInCache(guardrailStatus.sanitizedQuery, queryVector, generatedResponse, retrieved);
+  // FDE Fine-Tuning: Pass wasFlagged parameter to storeInCache so PII-redacted prompts are not cached
+  gateway.storeInCache(guardrailStatus.sanitizedQuery, queryVector, generatedResponse, retrieved, guardrailStatus.flagged);
 
   const latencyMs = Date.now() - startTime;
   const trace = telemetry.recordTrace({
@@ -298,6 +301,6 @@ app.post('/api/quiz', (req, res) => {
 app.listen(PORT, () => {
   console.log(`=======================================================`);
   console.log(`  AURA PERFUMERY - FDE Enterprise AI Platform Server  `);
-  console.log(`  Running on http://localhost:${PORT}`);
+  console.log(`  Running on http://localhost:3000`);
   console.log(`=======================================================`);
 });

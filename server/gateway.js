@@ -87,8 +87,13 @@ class LLMGateway {
     return { hit: false };
   }
 
-  // Save to Semantic Cache
-  storeInCache(query, queryVector, response, retrievedProducts) {
+  // Save to Semantic Cache (FDE Fine-Tuning: Do not cache queries that triggered PII guardrails)
+  storeInCache(query, queryVector, response, retrievedProducts, wasFlagged = false) {
+    // FDE Security Rule: Never cache PII-flagged prompts because sanitized placeholders like '[REDACTED_EMAIL]' cause false cache collision
+    if (wasFlagged) {
+      return;
+    }
+
     // Limit cache size to 100 entries
     if (this.semanticCache.length >= 100) {
       this.semanticCache.shift();
