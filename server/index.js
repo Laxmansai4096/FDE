@@ -1,5 +1,5 @@
 /**
- * AURA PERFUMERY - FDE Enterprise Application Server (Hybrid Local Ollama + Cloud LLM Stack)
+ * AURA PERFUMERY - FDE Enterprise Application Server (Order Support Engine Integrated)
  */
 
 const express = require('express');
@@ -19,6 +19,7 @@ const mcpServer = require('./mcp');
 const etlPipeline = require('./etl');
 const evaluator = require('./evals');
 const ollamaRouter = require('./ollama');
+const orderEngine = require('./orders');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,7 +28,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// 1. Chat & Scent Sommelier Endpoint (Ollama Hybrid Router + APIM Gateway + Guardrails + RAG)
+// 1. Chat & Scent Sommelier Endpoint (Ollama Hybrid Router + Customer Support Intent + APIM + RAG)
 app.post('/api/chat', async (req, res) => {
   const startTime = Date.now();
   const { query, filters = {} } = req.body;
@@ -78,6 +79,35 @@ app.post('/api/chat', async (req, res) => {
     });
   }
 
+  // Customer Support Intent Interceptor (Order Tracking, Order Cancel, Order Placement)
+  const lower = guardrailStatus.sanitizedQuery.toLowerCase();
+  if (lower.includes("ord-") || lower.includes("track order") || lower.includes("cancel order") || lower.includes("place order")) {
+    const agentRes = await agentOrchestrator.runAgentLoop(guardrailStatus.sanitizedQuery);
+    const latencyMs = Date.now() - startTime;
+    
+    const trace = telemetry.recordTrace({
+      query,
+      sanitizedQuery: guardrailStatus.sanitizedQuery,
+      provider: "Customer-Support-Order-Engine",
+      model: "react-order-agent",
+      cacheHit: false,
+      latencyMs,
+      promptTokens: 120,
+      completionTokens: 80,
+      retrievedProducts: [],
+      guardrailStatus,
+      response: agentRes.finalAnswer
+    });
+
+    return res.json({
+      response: agentRes.finalAnswer,
+      retrievedProducts: [],
+      cacheHit: false,
+      guardrailStatus,
+      telemetryTrace: trace
+    });
+  }
+
   // Step B: Hybrid RAG Retrieval (Vector + Relational)
   const ragResult = ragEngine.retrieve(guardrailStatus.sanitizedQuery, filters);
   const { queryVector, retrieved } = ragResult;
@@ -115,24 +145,20 @@ app.post('/api/chat', async (req, res) => {
   let modelName = "gemini-1.5-flash";
   let generatedResponse = null;
 
-  // Attempt Local Ollama LLM Inference if Available
   const ollamaResult = await ollamaRouter.generateResponse(guardrailStatus.sanitizedQuery, "You are AURA Olfactory Sommelier.");
   if (ollamaResult.usedLocal && ollamaResult.response) {
     generatedResponse = ollamaResult.response;
     providerName = ollamaResult.provider;
     modelName = ollamaResult.model;
   } else {
-    // Cloud Resilient Fallback Generator
     generatedResponse = gateway.generateDomainResponse(guardrailStatus.sanitizedQuery, retrieved);
   }
 
   const promptTokens = Math.round(guardrailStatus.sanitizedQuery.length / 4) + 120;
   const completionTokens = Math.round(generatedResponse.length / 4);
 
-  // Step E: Store response in Gateway Semantic Cache
   gateway.storeInCache(guardrailStatus.sanitizedQuery, queryVector, generatedResponse, retrieved);
 
-  // Step F: Record Telemetry
   const latencyMs = Date.now() - startTime;
   const trace = telemetry.recordTrace({
     query,
@@ -160,13 +186,32 @@ app.post('/api/chat', async (req, res) => {
   });
 });
 
-// 2. Ollama Health & Local Models Probe API
-app.get('/api/ollama/status', async (req, res) => {
-  const status = await ollamaRouter.checkHealth();
-  res.json(status);
+// Customer Support REST APIs
+app.post('/api/orders/place', (req, res) => {
+  const { productId, size, quantity } = req.body;
+  res.json(orderEngine.placeOrder(productId, size, quantity));
 });
 
-// 3. Autonomous Agentic AI Endpoint (ReAct Loop + Tool Calling)
+app.post('/api/orders/status', (req, res) => {
+  const { orderId } = req.body;
+  res.json(orderEngine.checkOrderStatus(orderId));
+});
+
+app.post('/api/orders/cancel', (req, res) => {
+  const { orderId } = req.body;
+  res.json(orderEngine.cancelOrder(orderId));
+});
+
+app.get('/api/orders', (req, res) => {
+  res.json(orderEngine.getAllOrders());
+});
+
+// Ollama Status API
+app.get('/api/ollama/status', async (req, res) => {
+  res.json(await ollamaRouter.checkHealth());
+});
+
+// Autonomous Agentic AI Endpoint
 app.post('/api/agent', async (req, res) => {
   const startTime = Date.now();
   const { query } = req.body;
@@ -198,74 +243,56 @@ app.post('/api/agent', async (req, res) => {
   });
 });
 
-// 4. Microsoft AutoGen Multi-Agent Team Endpoint
+// Microsoft AutoGen Multi-Agent Team Endpoint
 app.post('/api/autogen', async (req, res) => {
   const { query = "Formulate signature scent for cold evening gala" } = req.body;
-  const teamResult = await autoGenTeam.runTeamCollaboration(query);
-  res.json(teamResult);
+  res.json(await autoGenTeam.runTeamCollaboration(query));
 });
 
-// 5. HyDE & Reciprocal Rank Fusion (RRF) Retriever Endpoint
+// HyDE & RRF Endpoint
 app.post('/api/hyde', (req, res) => {
-  const { query = "Fresh solar fragrance" } = req.body;
-  const hydeResult = hydeRetriever.retrieveHyDE(query);
-  res.json(hydeResult);
+  res.json(hydeRetriever.retrieveHyDE(req.body.query || "Fresh solar fragrance"));
 });
 
-// 6. Red-Teaming Security Audit Endpoint
+// Red-Teaming Endpoint
 app.post('/api/redteam', (req, res) => {
-  const auditReport = redTeamSuite.runRedTeamAudit();
-  res.json(auditReport);
+  res.json(redTeamSuite.runRedTeamAudit());
 });
 
-// 7. Model Context Protocol (MCP) JSON-RPC 2.0 Endpoint
+// MCP Endpoint
 app.post('/api/mcp', (req, res) => {
-  const responsePayload = mcpServer.handleRPC(req.body);
-  res.json(responsePayload);
+  res.json(mcpServer.handleRPC(req.body));
 });
 
-// 8. LLM Evaluation & RAG Quality Benchmark Endpoint
+// RAG Evals Endpoint
 app.post('/api/evals', async (req, res) => {
-  const evalReport = await evaluator.runEvaluationSuite();
-  res.json(evalReport);
+  res.json(await evaluator.runEvaluationSuite());
 });
 
-// 9. Enterprise ETL Pipeline Ingestion Endpoint
+// ETL Endpoint
 app.post('/api/etl/ingest', (req, res) => {
-  const rawData = req.body.rawRecords || FRAGRANCE_CATALOG;
-  const etlResult = etlPipeline.ingestProductCatalog(rawData);
-  res.json(etlResult);
+  res.json(etlPipeline.ingestProductCatalog(req.body.rawRecords || FRAGRANCE_CATALOG));
 });
 
-// 10. Products Catalog API
+// Products API
 app.get('/api/products', (req, res) => {
-  res.json({
-    products: FRAGRANCE_CATALOG,
-    knowledgeGraph: KNOWLEDGE_GRAPH
-  });
+  res.json({ products: FRAGRANCE_CATALOG, knowledgeGraph: KNOWLEDGE_GRAPH });
 });
 
-// 11. FDE Telemetry & Operational Metrics API
+// Telemetry API
 app.get('/api/telemetry', (req, res) => {
   res.json(telemetry.getMetrics());
 });
 
-// 12. Flush Semantic Cache Endpoint
+// Flush Cache API
 app.post('/api/cache/flush', (req, res) => {
-  const clearedCount = gateway.flushCache();
-  res.json({ message: `Semantic cache flushed successfully. ${clearedCount} entries cleared.` });
+  res.json({ message: `Semantic cache flushed successfully. ${gateway.flushCache()} entries cleared.` });
 });
 
-// 13. Interactive Scent Builder Quiz Endpoint
+// Quiz API
 app.post('/api/quiz', (req, res) => {
-  const { mood, season, notePreference } = req.body;
-  const quizQuery = `Recommend a perfume for ${mood || 'luxury'} during ${season || 'any season'} featuring ${notePreference || 'balanced notes'}`;
-  
-  const ragResult = ragEngine.retrieve(quizQuery);
-  res.json({
-    recommendations: ragResult.retrieved,
-    queryVector: ragResult.queryVector
-  });
+  const ragResult = ragEngine.retrieve(`Recommend a perfume for ${req.body.mood || 'luxury'} during ${req.body.season || 'any season'} featuring ${req.body.notePreference || 'balanced notes'}`);
+  res.json({ recommendations: ragResult.retrieved, queryVector: ragResult.queryVector });
 });
 
 app.listen(PORT, () => {

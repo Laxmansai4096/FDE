@@ -1,0 +1,80 @@
+================================================================================
+AURA PERFUMERY — FORWARD DEPLOYED ENGINEER (FDE) USECASE OVERVIEW & REQUIREMENTS
+(info.txt)
+================================================================================
+
+--------------------------------------------------------------------------------
+1. WHAT IS THIS USECASE ABOUT?
+--------------------------------------------------------------------------------
+This usecase represents a full-scale enterprise Forward Deployed Engineering (FDE) 
+solution built for a luxury haute parfumerie client ("AURA Perfumery"). 
+
+As a Forward Deployed Engineer (FDE), your role is to bridge the gap between high-level 
+client business objectives (e-commerce conversion, bespoke scent formulation, online 
+order fulfillment & customer support) and production-ready enterprise AI infrastructure 
+(LLM Gateway, Hybrid Vector/Relational RAG, Order OMS Integration, Autonomous ReAct 
+Tool Calling, Model Context Protocol, and Telemetry Observability).
+
+
+--------------------------------------------------------------------------------
+2. WHAT REAL-WORLD ENTERPRISE PROBLEMS IS IT SOLVING?
+--------------------------------------------------------------------------------
+
+PROBLEM 1: Customer Support Friction for E-Commerce Orders & Tracking
+- Issue: Customers call support centers or abandon chats asking "Where is my order?" 
+  or "Cancel my order", driving up customer support operational costs.
+- Solution: An AI Customer Support Assistant integrated with an Order Management System 
+  (OMS) that places orders, tracks shipments (DHL/FedEx), and cancels processing orders 
+  autonomously while updating relational SQL stock.
+
+PROBLEM 2: Customer Confusion Over Complex Olfactory Terminology
+- Issue: Online shoppers struggle to connect emotional desires ("warm cozy evening spray") 
+  to scientific fragrance notes (Cardamom, Smoked Cedarwood, Labdanum).
+- Solution: A natural language AI Olfactory Sommelier using a 6D Scent Accord Vector Space 
+  [Citrus, Woody, Floral, Oriental, Gourmand, Fresh].
+
+PROBLEM 3: LLM Hallucinations & Out-of-Stock Product Recommendations
+- Issue: Off-the-shelf LLMs frequently recommend discontinued or out-of-stock items.
+- Solution: A Hybrid RAG Retriever that merges dense vector semantic similarity with 
+  real-time SQL inventory availability (inStock, stockCount) and metadata reranking.
+
+PROBLEM 4: Risk of Leaking Customer PII (Emails & Credit Cards) to External LLMs
+- Issue: Customers paste personal details in chat prompts, risking severe GDPR/CCPA fines.
+- Solution: An Ingress LLM Gateway Proxy that scrubs Emails ([REDACTED_EMAIL]) and 
+  Credit Cards ([REDACTED_CARD]) before prompts reach LLM APIs.
+
+PROBLEM 5: High LLM API Bills & Slow UI Latency During Peak Traffic
+- Issue: Sending every identical prompt to cloud LLMs costs thousands of dollars monthly.
+- Solution: A Semantic Vector Cache (Cosine Sim >= 0.88) returning sub-15ms cached 
+  answers at $0.00 token cost.
+
+PROBLEM 6: Complex Bespoke Custom Perfume Formulation Requirements
+- Issue: Single-prompt LLMs fail when asked to calculate precise Extrait de Parfum 
+  compound oil ratios (% top, % heart, % base notes) while adhering to IFRA allergen limits.
+- Solution: An Autonomous ReAct Multi-Agent Engine and AutoGen Collaboration Team.
+
+
+--------------------------------------------------------------------------------
+3. CLIENT REQUIREMENTS GIVEN (FUNCTIONAL & NON-FUNCTIONAL)
+--------------------------------------------------------------------------------
+
+FUNCTIONAL REQUIREMENTS:
+  [FR-01] Interactive AI Fragrance Concierge & Customer Support Assistant Chatbot.
+  [FR-02] Order Management System (OMS): Place Order, Track Order Status, Cancel Order.
+  [FR-03] Real-Time Inventory & Price Check integrated with product catalog DB.
+  [FR-04] Bespoke Custom Formula Generator creating Extrait de Parfum compound ratios.
+  [FR-05] Interactive 6D Scent Vector Accord Visualizer & Bespoke Scent Finder Quiz.
+  [FR-06] Slide-Out FDE Operations Telemetry Drawer monitoring live request spans.
+  [FR-07] Model Context Protocol (MCP) JSON-RPC 2.0 endpoint for enterprise tools.
+  [FR-08] Local Ollama LLM Router with automatic health probing and cloud fallback.
+
+NON-FUNCTIONAL & SECURITY REQUIREMENTS:
+  [NFR-01] Latency SLA: Sub-200ms retrieval latency; sub-15ms for cached queries.
+  [NFR-02] Security & Privacy: 100% PII redaction compliance + prompt injection defense.
+  [NFR-03] Multi-Tenant Protection: Token Bucket rate limiting per X-Tenant-ID header.
+  [NFR-04] Availability SLA: 99.99% system uptime via hybrid local/cloud provider failover.
+  [NFR-05] Quality Benchmarks: Composite Ragas quality score >= 0.95.
+
+================================================================================
+END OF USECASE OVERVIEW & REQUIREMENTS DOCUMENT (info.txt)
+================================================================================
