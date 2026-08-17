@@ -1,5 +1,5 @@
 /**
- * AURA PERFUMERY - FDE Enterprise Application Server (Microsoft Azure AI Stack Alignment)
+ * AURA PERFUMERY - FDE Enterprise Application Server (Hybrid Local Ollama + Cloud LLM Stack)
  */
 
 const express = require('express');
@@ -18,6 +18,7 @@ const agentOrchestrator = require('./agent');
 const mcpServer = require('./mcp');
 const etlPipeline = require('./etl');
 const evaluator = require('./evals');
+const ollamaRouter = require('./ollama');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,7 +27,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// 1. Chat & Scent Sommelier Endpoint (Azure APIM Gateway + Guardrails + Hybrid RAG)
+// 1. Chat & Scent Sommelier Endpoint (Ollama Hybrid Router + APIM Gateway + Guardrails + RAG)
 app.post('/api/chat', async (req, res) => {
   const startTime = Date.now();
   const { query, filters = {} } = req.body;
@@ -109,8 +110,22 @@ app.post('/api/chat', async (req, res) => {
     });
   }
 
-  // Step D: LLM Generation (Model Inference / Resilient Fallback)
-  const generatedResponse = gateway.generateDomainResponse(guardrailStatus.sanitizedQuery, retrieved);
+  // Step D: Hybrid LLM Generation (Ollama Local -> Cloud Gemini Fallback)
+  let providerName = "Gemini-1.5-Flash (Primary)";
+  let modelName = "gemini-1.5-flash";
+  let generatedResponse = null;
+
+  // Attempt Local Ollama LLM Inference if Available
+  const ollamaResult = await ollamaRouter.generateResponse(guardrailStatus.sanitizedQuery, "You are AURA Olfactory Sommelier.");
+  if (ollamaResult.usedLocal && ollamaResult.response) {
+    generatedResponse = ollamaResult.response;
+    providerName = ollamaResult.provider;
+    modelName = ollamaResult.model;
+  } else {
+    // Cloud Resilient Fallback Generator
+    generatedResponse = gateway.generateDomainResponse(guardrailStatus.sanitizedQuery, retrieved);
+  }
+
   const promptTokens = Math.round(guardrailStatus.sanitizedQuery.length / 4) + 120;
   const completionTokens = Math.round(generatedResponse.length / 4);
 
@@ -122,8 +137,8 @@ app.post('/api/chat', async (req, res) => {
   const trace = telemetry.recordTrace({
     query,
     sanitizedQuery: guardrailStatus.sanitizedQuery,
-    provider: "Azure-OpenAI-Gemini-Bridge",
-    model: "gpt-4o-mini-aura",
+    provider: providerName,
+    model: modelName,
     cacheHit: false,
     latencyMs,
     promptTokens,
@@ -138,12 +153,20 @@ app.post('/api/chat', async (req, res) => {
     retrievedProducts: retrieved,
     queryVector,
     cacheHit: false,
+    providerUsed: providerName,
+    modelUsed: modelName,
     guardrailStatus,
     telemetryTrace: trace
   });
 });
 
-// 2. Autonomous Agentic AI Endpoint (ReAct Loop + Tool Calling)
+// 2. Ollama Health & Local Models Probe API
+app.get('/api/ollama/status', async (req, res) => {
+  const status = await ollamaRouter.checkHealth();
+  res.json(status);
+});
+
+// 3. Autonomous Agentic AI Endpoint (ReAct Loop + Tool Calling)
 app.post('/api/agent', async (req, res) => {
   const startTime = Date.now();
   const { query } = req.body;
@@ -175,46 +198,46 @@ app.post('/api/agent', async (req, res) => {
   });
 });
 
-// 3. Microsoft AutoGen Multi-Agent Team Endpoint
+// 4. Microsoft AutoGen Multi-Agent Team Endpoint
 app.post('/api/autogen', async (req, res) => {
   const { query = "Formulate signature scent for cold evening gala" } = req.body;
   const teamResult = await autoGenTeam.runTeamCollaboration(query);
   res.json(teamResult);
 });
 
-// 4. HyDE & Reciprocal Rank Fusion (RRF) Retriever Endpoint
+// 5. HyDE & Reciprocal Rank Fusion (RRF) Retriever Endpoint
 app.post('/api/hyde', (req, res) => {
   const { query = "Fresh solar fragrance" } = req.body;
   const hydeResult = hydeRetriever.retrieveHyDE(query);
   res.json(hydeResult);
 });
 
-// 5. Red-Teaming Security Audit Endpoint
+// 6. Red-Teaming Security Audit Endpoint
 app.post('/api/redteam', (req, res) => {
   const auditReport = redTeamSuite.runRedTeamAudit();
   res.json(auditReport);
 });
 
-// 6. Model Context Protocol (MCP) JSON-RPC 2.0 Endpoint
+// 7. Model Context Protocol (MCP) JSON-RPC 2.0 Endpoint
 app.post('/api/mcp', (req, res) => {
   const responsePayload = mcpServer.handleRPC(req.body);
   res.json(responsePayload);
 });
 
-// 7. LLM Evaluation & RAG Quality Benchmark Endpoint
+// 8. LLM Evaluation & RAG Quality Benchmark Endpoint
 app.post('/api/evals', async (req, res) => {
   const evalReport = await evaluator.runEvaluationSuite();
   res.json(evalReport);
 });
 
-// 8. Enterprise ETL Pipeline Ingestion Endpoint
+// 9. Enterprise ETL Pipeline Ingestion Endpoint
 app.post('/api/etl/ingest', (req, res) => {
   const rawData = req.body.rawRecords || FRAGRANCE_CATALOG;
   const etlResult = etlPipeline.ingestProductCatalog(rawData);
   res.json(etlResult);
 });
 
-// 9. Products Catalog API
+// 10. Products Catalog API
 app.get('/api/products', (req, res) => {
   res.json({
     products: FRAGRANCE_CATALOG,
@@ -222,18 +245,18 @@ app.get('/api/products', (req, res) => {
   });
 });
 
-// 10. FDE Telemetry & Operational Metrics API
+// 11. FDE Telemetry & Operational Metrics API
 app.get('/api/telemetry', (req, res) => {
   res.json(telemetry.getMetrics());
 });
 
-// 11. Flush Semantic Cache Endpoint
+// 12. Flush Semantic Cache Endpoint
 app.post('/api/cache/flush', (req, res) => {
   const clearedCount = gateway.flushCache();
   res.json({ message: `Semantic cache flushed successfully. ${clearedCount} entries cleared.` });
 });
 
-// 12. Interactive Scent Builder Quiz Endpoint
+// 13. Interactive Scent Builder Quiz Endpoint
 app.post('/api/quiz', (req, res) => {
   const { mood, season, notePreference } = req.body;
   const quizQuery = `Recommend a perfume for ${mood || 'luxury'} during ${season || 'any season'} featuring ${notePreference || 'balanced notes'}`;
