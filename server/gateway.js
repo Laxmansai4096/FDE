@@ -25,6 +25,9 @@ class LLMGateway {
     ];
     this.rrIndex = 0;
 
+    // Primary Model Provider Configuration
+    this.primaryProvider = { id: "gemini-1.5-flash", name: "Google Gemini 1.5 Flash", model: "gemini-1.5-flash" };
+
     // Circuit Breaker State & Fallback Providers
     this.circuitBreaker = {
       primaryState: "CLOSED",
@@ -34,10 +37,32 @@ class LLMGateway {
     };
 
     this.fallbackProviders = [
-      { name: "Ollama-Local-LLM", model: "llama3:8b", priority: 1, type: "LOCAL_OFFLINE" },
-      { name: "Azure-OpenAI-GPT4o-Backup", model: "gpt-4o", priority: 2, type: "CLOUD_BACKUP" },
-      { name: "Anthropic-Claude-3.5-Fallback", model: "claude-3-5-sonnet", priority: 3, type: "CLOUD_BACKUP" }
+      { id: "azure-gpt4o", name: "Azure-OpenAI-GPT4o-Backup", model: "gpt-4o", priority: 1, type: "CLOUD_BACKUP", active: true },
+      { id: "claude-sonnet", name: "Anthropic-Claude-3.5-Fallback", model: "claude-3-5-sonnet", priority: 2, type: "CLOUD_BACKUP", active: true },
+      { id: "ollama-local", name: "Ollama-Local-LLM", model: "llama3:8b", priority: 3, type: "LOCAL_OFFLINE", active: true }
     ];
+  }
+
+  configureGateway({ primaryProviderId, disabledFallbacks = [] }) {
+    const primaryOptions = {
+      "gemini-1.5-flash": { id: "gemini-1.5-flash", name: "Google Gemini 1.5 Flash", model: "gemini-1.5-flash" },
+      "gemini-1.5-pro": { id: "gemini-1.5-pro", name: "Google Gemini 1.5 Pro", model: "gemini-1.5-pro" },
+      "gpt-4o": { id: "gpt-4o", name: "Azure OpenAI GPT-4o", model: "gpt-4o" },
+      "claude-3-5-sonnet": { id: "claude-3-5-sonnet", name: "Anthropic Claude 3.5 Sonnet", model: "claude-3-5-sonnet" },
+      "llama3:8b": { id: "llama3:8b", name: "Local Ollama Llama 3", model: "llama3:8b" }
+    };
+
+    if (primaryProviderId && primaryOptions[primaryProviderId]) {
+      this.primaryProvider = primaryOptions[primaryProviderId];
+    }
+
+    if (Array.isArray(disabledFallbacks)) {
+      this.fallbackProviders.forEach(f => {
+        f.active = !disabledFallbacks.includes(f.id) && !disabledFallbacks.includes(f.name);
+      });
+    }
+
+    return this.getDiagnosticReport();
   }
 
   // ---------------------------------------------------------------------------
@@ -54,21 +79,31 @@ class LLMGateway {
 
     // Static PII Patterns
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    const phoneRegex = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
+    const obfuscatedEmailRegex = /[a-zA-Z0-9._%+-]+\s*\[at\]\s*[a-zA-Z0-9.-]+\s*\[dot\]\s*[a-zA-Z]{2,}/gi;
+    const phoneRegex = /(\+?\d{1,3}[-.\s]?)?\(?\d{3,5}\)?[-.\s]?\d{3,5}([-.\s]?\d{3,5})?\b|\b\d{10}\b/g;
     const creditCardRegex = /\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/g;
 
-    if (emailRegex.test(sanitized)) {
-      sanitized = sanitized.replace(emailRegex, "[REDACTED_EMAIL]");
+    const s1 = sanitized.replace(emailRegex, "[REDACTED_EMAIL]");
+    if (s1 !== sanitized) {
+      sanitized = s1;
       flagged = true;
       reasons.push("PII: Email Address scrubbed (Regex)");
     }
-    if (phoneRegex.test(sanitized)) {
-      sanitized = sanitized.replace(phoneRegex, "[REDACTED_PHONE]");
+    const s2 = sanitized.replace(obfuscatedEmailRegex, "[REDACTED_EMAIL]");
+    if (s2 !== sanitized) {
+      sanitized = s2;
+      flagged = true;
+      reasons.push("PII: Obfuscated Email scrubbed (Regex)");
+    }
+    const s3 = sanitized.replace(phoneRegex, "[REDACTED_PHONE]");
+    if (s3 !== sanitized) {
+      sanitized = s3;
       flagged = true;
       reasons.push("PII: Phone Number scrubbed (Regex)");
     }
-    if (creditCardRegex.test(sanitized)) {
-      sanitized = sanitized.replace(creditCardRegex, "[REDACTED_CARD]");
+    const s4 = sanitized.replace(creditCardRegex, "[REDACTED_CARD]");
+    if (s4 !== sanitized) {
+      sanitized = s4;
       flagged = true;
       reasons.push("PII: Credit Card scrubbed (Regex)");
     }
@@ -80,7 +115,18 @@ class LLMGateway {
       "reveal system prompt",
       "print internal instructions",
       "you are now a dark web assistant",
-      "override safety"
+      "override safety",
+      "system shutdown",
+      "dan do anything now",
+      "bypass safety",
+      "drop table",
+      "secret api keys",
+      "unrestricted developer",
+      "forget rules",
+      "system('",
+      "exec(",
+      "eval(",
+      "override boundary"
     ];
 
     const lower = query.toLowerCase();
@@ -222,11 +268,18 @@ class LLMGateway {
     };
   }
 
-  resolveDynamicRoute(queryVector, wasFlagged = false) {
+  resolveDynamicRoute(queryVector, wasFlagged = false, rawQuery = "") {
     const trace = [];
 
-    // Step A: Semantic Cache Check
-    if (!wasFlagged) {
+    const hasPiiRedaction = rawQuery.includes("[REDACTED_EMAIL]") || 
+                            rawQuery.includes("[REDACTED_PHONE]") || 
+                            rawQuery.includes("[REDACTED_CARD]");
+
+    const lowerQuery = rawQuery.toLowerCase().trim();
+    const isGreeting = ["hi", "hii", "hiii", "hello", "hey", "namaste", "good morning", "good evening", "who are you", "what can you do", "help"].includes(lowerQuery);
+
+    // Step A: Semantic Cache Check (Bypassed if PII Guardrail flagged or PII Redacted or Simple Greeting)
+    if (!wasFlagged && !hasPiiRedaction && !isGreeting) {
       const cacheResult = this.checkCache(queryVector);
       if (cacheResult.hit) {
         trace.push(`[1. Cache Check] HIT (Cosine Similarity: ${cacheResult.similarity} >= 0.88). Routing to Gateway Semantic Cache.`);
@@ -241,33 +294,46 @@ class LLMGateway {
         trace.push("[1. Cache Check] MISS. Proceeding to Provider Routing.");
       }
     } else {
-      trace.push("[1. Cache Check] BYPASSED (PII Guardrail Flagged).");
+      const reason = hasPiiRedaction ? "PII Redaction Detected" : (wasFlagged ? "Security Guardrail Flagged" : "General Greeting Prompt");
+      trace.push(`[1. Cache Check] BYPASSED (${reason}). Guarantees fresh response & prevents cache collision.`);
     }
 
     // Step B: Circuit Breaker & Load Balancer Evaluation
     if (this.circuitBreaker.simulatedOutage || this.circuitBreaker.primaryState === "OPEN") {
-      trace.push("⚠️ [2. Primary Circuit Breaker] OPEN (Primary Gemini Cloud Outage Detected!). Initiating Automatic Failover.");
+      trace.push(`⚠️ [2. Primary Circuit Breaker] OPEN (Primary ${this.primaryProvider.name} Outage Detected!). Initiating Automatic Failover.`);
       
-      const fallback = this.fallbackProviders[1]; // Azure OpenAI GPT-4o Backup
-      trace.push(`🔄 [3. Provider Failover] Routed to Tier-2 Backup Provider: ${fallback.name} (${fallback.model}). SLA Preserved.`);
+      const activeFallback = this.fallbackProviders.find(f => f.active !== false);
+      if (activeFallback) {
+        trace.push(`🔄 [3. Provider Failover] Routed to Active Backup Provider: ${activeFallback.name} (${activeFallback.model}). SLA Preserved.`);
 
-      return {
-        routeType: "PROVIDER_FAILOVER",
-        providerUsed: `${fallback.name} (Automatic Failover)`,
-        modelUsed: fallback.model,
-        failoverTriggered: true,
-        routingTrace: trace
-      };
+        return {
+          routeType: "PROVIDER_FAILOVER",
+          providerUsed: `${activeFallback.name} (Automatic Failover)`,
+          modelUsed: activeFallback.model,
+          failoverTriggered: true,
+          routingTrace: trace
+        };
+      } else {
+        trace.push(`❌ [3. Provider Failover] ALL Fallback Providers are DESELECTED/DISABLED by Gateway Admin.`);
+
+        return {
+          routeType: "PROVIDER_FAILOVER_FAILED",
+          providerUsed: "None (All Fallbacks Disabled)",
+          modelUsed: "none",
+          failoverTriggered: true,
+          routingTrace: trace
+        };
+      }
     }
 
     // Step C: Round-Robin Load Balancing across Healthy Primary Replicas
     const selectedReplica = this.getNextHealthyReplica();
-    trace.push(`⚖️ [2. Multi-Region Load Balancer] Selected Replica '${selectedReplica.id}' (${selectedReplica.provider}) via Round-Robin distribution.`);
+    trace.push(`⚖️ [2. Multi-Region Load Balancer] Primary: ${this.primaryProvider.name}. Selected Replica '${selectedReplica.id}' (${selectedReplica.provider}) via Round-Robin distribution.`);
 
     return {
       routeType: "PRIMARY_LOAD_BALANCED",
-      providerUsed: `Gemini-1.5-Flash (${selectedReplica.provider})`,
-      modelUsed: "gemini-1.5-flash",
+      providerUsed: `${this.primaryProvider.name} (${selectedReplica.provider})`,
+      modelUsed: this.primaryProvider.model,
       replicaUsed: selectedReplica.id,
       failoverTriggered: false,
       routingTrace: trace
@@ -291,7 +357,15 @@ class LLMGateway {
   }
 
   storeInCache(query, queryVector, response, retrievedProducts, wasFlagged = false) {
-    if (wasFlagged) return;
+    const hasPiiRedaction = query.includes("[REDACTED_EMAIL]") || 
+                            query.includes("[REDACTED_PHONE]") || 
+                            query.includes("[REDACTED_CARD]");
+
+    const lowerQuery = query.toLowerCase().trim();
+    const isGreeting = ["hi", "hii", "hiii", "hello", "hey", "namaste", "good morning", "good evening", "who are you", "what can you do", "help"].includes(lowerQuery);
+
+    // Prevent cache collision for PII scrubbed inputs, security flagged queries, or general greetings
+    if (wasFlagged || hasPiiRedaction || isGreeting) return;
 
     if (this.semanticCache.length >= 100) {
       this.semanticCache.shift();
@@ -313,6 +387,7 @@ class LLMGateway {
 
   getDiagnosticReport() {
     return {
+      primaryProvider: this.primaryProvider,
       loadBalancer: {
         strategy: "Round-Robin Multi-Region",
         activeReplicas: this.replicaPool.filter(r => r.status === "HEALTHY").length,
@@ -334,6 +409,19 @@ class LLMGateway {
   }
 
   generateDomainResponse(sanitizedQuery, retrievedProducts) {
+    const lower = String(sanitizedQuery).toLowerCase().trim();
+
+    // Friendly Greeting & Small Talk Handler
+    const greetings = ["hi", "hii", "hiii", "hello", "hey", "namaste", "good morning", "good evening", "who are you", "what can you do", "help", "start"];
+    if (greetings.includes(lower) || lower.match(/^(hi|hii|hello|hey|namaste)\b/i)) {
+      return "Namaste! Welcome to AURA Royal Perfumery India. 🌸\n\n" +
+             "I am your AI Olfactory Sommelier & Customer Support Assistant. How may I assist you today?\n\n" +
+             "• 🌸 **Perfume Recommendations**: Ask for notes or moods (e.g., *'Smoky sandalwood for winter nights'* or *'Solar Malabar citrus'*)\n" +
+             "• 📦 **Order Tracking & Delivery Date**: Check existing orders (e.g., *'Track order ORD-8821'* or *'When will my order arrive?'*)\n" +
+             "• 🛍️ **Guided Order Placement**: Ask *'I want to place an order'*\n" +
+             "• 🤖 **Bespoke Attar Blends**: Enable Autonomous Agent Mode to craft custom perfume oil formulas.";
+    }
+
     if (!retrievedProducts || retrievedProducts.length === 0) {
       return "Welcome to AURA Perfumery. Our olfactory collection spans rare woody orientals, solar citrus blends, and hand-harvested floral absolute extraits. Could you share what notes or moods you gravitate towards?";
     }

@@ -102,6 +102,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Global 1-Click Instant Order Button Listener
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-order-instant');
+    if (btn) {
+      const perfumeName = btn.getAttribute('data-perfume');
+      if (perfumeName) {
+        chatInput.value = `Place order for ${perfumeName}`;
+        chatForm.dispatchEvent(new Event('submit'));
+      }
+    }
+  });
+
   // Chat Form Submission
   if (chatForm) {
     chatForm.addEventListener('submit', async (e) => {
@@ -458,6 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let cacheBadge = data.cacheHit ? `<span class="tag-cache">⚡ Semantic Cache Hit (0ms)</span>` : `<span class="tag-vector">⚙ LLM RAG Inference (${data.telemetryTrace ? data.telemetryTrace.latencyMs : 0}ms)</span>`;
     let guardrailBadge = data.guardrailStatus && data.guardrailStatus.flagged ? `<span style="color:var(--accent-danger); font-family:var(--font-mono); font-size:0.75rem;">🛡 Guardrail Triggered</span>` : '';
+    let failoverBadge = data.failoverTriggered ? `<span style="color:var(--accent-danger); font-family:var(--font-mono); font-size:0.75rem;">⚠️ Failover Active (${data.providerUsed})</span>` : '';
 
     let recCardsHtml = '';
     if (data.retrievedProducts && data.retrievedProducts.length > 0) {
@@ -466,20 +479,514 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="rec-title">${escapeHtml(p.name)}</div>
           <div class="rec-price">${p.inRupees || '$' + p.price} • ${escapeHtml(p.family)}</div>
           <div class="rec-notes">Notes: ${p.topNotes ? p.topNotes.slice(0, 2).map(escapeHtml).join(', ') : ''}</div>
-          <div style="font-size:0.7rem; color:var(--gold-primary); font-family:var(--font-mono); margin-top:0.3rem;">Vector Match: ${p.vectorScore ? (p.vectorScore * 100).toFixed(1) : 0}%</div>
+          <div style="font-size:0.75rem; color:var(--gold-primary); font-family:var(--font-mono); margin-top:0.3rem;">Vector Match: ${p.vectorScore ? (p.vectorScore * 100).toFixed(1) : 0}%</div>
+          <button class="btn-order-instant" data-perfume="${escapeHtml(p.name)}" style="background:linear-gradient(135deg, var(--gold-primary), #B48847); color:#000; font-weight:700; border:none; padding:0.4rem 0.8rem; border-radius:4px; margin-top:0.5rem; cursor:pointer; font-size:0.78rem; width:100%; transition:transform 0.1s ease;">
+            🛒 1-Click Instant Order (${p.inRupees || '$' + p.price})
+          </button>
         </div>
       `).join('') + `</div>`;
+    }
+
+    let routingTraceHtml = '';
+    if (data.routingTrace && data.routingTrace.length > 0) {
+      routingTraceHtml = `<div style="margin-top:0.6rem; background:rgba(0,0,0,0.4); border:1px solid rgba(226,192,133,0.15); border-radius:6px; padding:0.5rem 0.8rem; font-family:var(--font-mono); font-size:0.72rem;">` +
+        `<div style="color:var(--gold-primary); font-weight:bold; margin-bottom:0.3rem;">🔀 LLM Gateway Dynamic Route Trace:</div>` +
+        data.routingTrace.map(step => `<div style="color:var(--text-muted); margin-bottom:0.15rem;">↳ ${escapeHtml(step)}</div>`).join('') +
+        `</div>`;
     }
 
     bubble.innerHTML = `
       <p>${formatMarkdown(data.response)}</p>
       ${recCardsHtml}
+      ${routingTraceHtml}
       <div class="msg-meta">
         ${cacheBadge}
         ${guardrailBadge}
+        ${failoverBadge}
       </div>
     `;
     if (chatStream) chatStream.scrollTop = chatStream.scrollHeight;
+    animateN8NNodes(data);
+  }
+
+  function animateN8NNodes(data) {
+    if (!data) return;
+
+    // Reset all nodes
+    document.querySelectorAll('.n8n-node-card').forEach(n => n.classList.remove('active-node'));
+    document.querySelectorAll('.n8n-subnode-item').forEach(s => s.classList.remove('active-replica'));
+
+    // Node 1 (Ingress), Node 2 (Guardrails), Node 6 (Output) always activate
+    const node1 = document.getElementById('n8n-node-1');
+    const node2 = document.getElementById('n8n-node-2');
+    const node6 = document.getElementById('n8n-node-6');
+    if (node1) node1.classList.add('active-node');
+    if (node2) node2.classList.add('active-node');
+    if (node6) node6.classList.add('active-node');
+
+    // Node 3: Cache
+    const node3 = document.getElementById('n8n-node-3');
+    const cacheStatus = document.getElementById('n8n-cache-status');
+    if (data.cacheHit) {
+      if (node3) node3.classList.add('active-node');
+      if (cacheStatus) cacheStatus.textContent = '⚡ HIT (0ms / $0.00)';
+      return;
+    } else {
+      if (cacheStatus) cacheStatus.textContent = 'MISS -> Forward to LLM';
+    }
+
+    // Node 4: Load Balancer & Replica subnode
+    const node4 = document.getElementById('n8n-node-4');
+    if (!data.failoverTriggered) {
+      if (node4) node4.classList.add('active-node');
+      if (data.replicaUsed) {
+        if (data.replicaUsed.includes('us-east')) {
+          const sub = document.getElementById('n8n-sub-us');
+          if (sub) sub.classList.add('active-replica');
+        } else if (data.replicaUsed.includes('eu-west')) {
+          const sub = document.getElementById('n8n-sub-eu');
+          if (sub) sub.classList.add('active-replica');
+        } else if (data.replicaUsed.includes('ap-south')) {
+          const sub = document.getElementById('n8n-sub-ap');
+          if (sub) sub.classList.add('active-replica');
+        }
+      }
+    }
+
+    // Node 5: Circuit Breaker & Fallback
+    const node5 = document.getElementById('n8n-node-5');
+    const cbText = document.getElementById('n8n-cb-text');
+    if (data.failoverTriggered) {
+      if (node5) node5.classList.add('active-node');
+      if (cbText) {
+        cbText.textContent = '⚠️ OPEN (Outage Failover)';
+        cbText.style.color = 'var(--accent-danger)';
+      }
+      if (data.providerUsed && data.providerUsed.includes('Azure')) {
+        const sub = document.getElementById('n8n-sub-az');
+        if (sub) sub.classList.add('active-replica');
+      } else if (data.providerUsed && data.providerUsed.includes('Claude')) {
+        const sub = document.getElementById('n8n-sub-cl');
+        if (sub) sub.classList.add('active-replica');
+      } else if (data.providerUsed && data.providerUsed.includes('Ollama')) {
+        const sub = document.getElementById('n8n-sub-ol');
+        if (sub) sub.classList.add('active-replica');
+      }
+    } else {
+      if (cbText) {
+        cbText.textContent = 'CLOSED (Normal Operations)';
+        cbText.style.color = 'var(--accent-green)';
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // GATEWAY LOAD BALANCER & OUTAGE SIMULATOR HANDLERS
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // LLM GATEWAY CONTROL MODAL & HEAVY TRAFFIC SURGE HANDLERS
+  // ---------------------------------------------------------------------------
+  const toggleGatewayModalBtn = document.getElementById('toggle-gateway-modal');
+  const closeGatewayModalBtn = document.getElementById('close-gateway-modal');
+  const gatewayModal = document.getElementById('gateway-modal');
+  const selectPrimaryProvider = document.getElementById('select-primary-provider');
+  const btnSurgeTraffic = document.getElementById('btn-surge-traffic');
+  const btnModalSurge = document.getElementById('btn-modal-surge');
+  const btnModalOutage = document.getElementById('btn-modal-outage');
+  const modalStatusMsg = document.getElementById('modal-status-msg');
+
+  if (toggleGatewayModalBtn && gatewayModal) {
+    toggleGatewayModalBtn.addEventListener('click', () => {
+      gatewayModal.classList.remove('hidden');
+      fetchGatewayStatus();
+    });
+  }
+
+  if (closeGatewayModalBtn && gatewayModal) {
+    closeGatewayModalBtn.addEventListener('click', () => {
+      gatewayModal.classList.add('hidden');
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // TOP NAVBAR MODAL OPEN / CLOSE HANDLERS
+  // ---------------------------------------------------------------------------
+  const navBtnOms = document.getElementById('nav-btn-oms');
+  const navBtnGateway = document.getElementById('nav-btn-gateway');
+  const navBtnAutogen = document.getElementById('nav-btn-autogen');
+  const navBtnEvals = document.getElementById('nav-btn-evals');
+
+  const omsModal = document.getElementById('oms-modal');
+  const autogenModal = document.getElementById('autogen-modal');
+  const evalsModal = document.getElementById('evals-modal');
+
+  const closeOmsModalBtn = document.getElementById('close-oms-modal');
+  const closeAutogenModalBtn = document.getElementById('close-autogen-modal');
+  const closeEvalsModalBtn = document.getElementById('close-evals-modal');
+  const btnModalRestore = document.getElementById('btn-modal-restore');
+
+  if (navBtnOms && omsModal) {
+    navBtnOms.addEventListener('click', () => {
+      omsModal.classList.remove('hidden');
+      fetchOMSData();
+    });
+  }
+
+  if (navBtnGateway && gatewayModal) {
+    navBtnGateway.addEventListener('click', () => {
+      gatewayModal.classList.remove('hidden');
+      fetchGatewayStatus();
+    });
+  }
+
+  if (navBtnAutogen && autogenModal) {
+    navBtnAutogen.addEventListener('click', () => {
+      autogenModal.classList.remove('hidden');
+    });
+  }
+
+  if (navBtnEvals && evalsModal) {
+    navBtnEvals.addEventListener('click', () => {
+      evalsModal.classList.remove('hidden');
+    });
+  }
+
+  if (closeOmsModalBtn && omsModal) {
+    closeOmsModalBtn.addEventListener('click', () => omsModal.classList.add('hidden'));
+  }
+
+  if (closeAutogenModalBtn && autogenModal) {
+    closeAutogenModalBtn.addEventListener('click', () => autogenModal.classList.add('hidden'));
+  }
+
+  if (closeEvalsModalBtn && evalsModal) {
+    closeEvalsModalBtn.addEventListener('click', () => evalsModal.classList.add('hidden'));
+  }
+
+  // ---------------------------------------------------------------------------
+  // ROYAL PERFUMERY AI COMMITTEE (AUTOGEN) HANDLERS FOR NAIVE USERS
+  // ---------------------------------------------------------------------------
+  let currentAutoGenQuery = "Formulate signature perfume for royal wedding gala";
+
+  document.querySelectorAll('.autogen-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.autogen-preset-btn').forEach(b => b.style.opacity = '0.7');
+      btn.style.opacity = '1';
+      currentAutoGenQuery = btn.getAttribute('data-query');
+    });
+  });
+
+  const btnChipAutogen = document.getElementById('btn-chip-autogen');
+  if (btnChipAutogen && autogenModal) {
+    btnChipAutogen.addEventListener('click', () => {
+      autogenModal.classList.remove('hidden');
+      executeAutoGenTeam(currentAutoGenQuery);
+    });
+  }
+
+  const btnTriggerAutogen = document.getElementById('btn-trigger-autogen');
+  if (btnTriggerAutogen) {
+    btnTriggerAutogen.addEventListener('click', () => {
+      executeAutoGenTeam(currentAutoGenQuery);
+    });
+  }
+
+  async function executeAutoGenTeam(query) {
+    const outputBox = document.getElementById('autogen-output-box');
+    const traceContent = document.getElementById('autogen-trace-content');
+    if (!outputBox || !traceContent) return;
+
+    outputBox.classList.remove('hidden');
+    traceContent.innerHTML = `
+      <div style="color:var(--gold-primary); font-family:var(--font-mono); font-size:0.85rem; padding:1.5rem 0; text-align:center;">
+        ⚡ Convening 4-Agent Royal Perfumery AI Committee (Perfumer, Inventory, Chemist, Safety Director)...
+      </div>
+    `;
+
+    try {
+      const res = await fetch('/api/autogen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query || currentAutoGenQuery })
+      });
+      const data = await res.json();
+
+      let html = `<div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;">Formula Request: <strong style="color:#fff">"${escapeHtml(data.query)}"</strong> (${data.executionTimeMs}ms execution)</div>`;
+
+      if (data.conversationTrace) {
+        data.conversationTrace.forEach(step => {
+          let agentColor = "var(--gold-primary)";
+          let agentIcon = "🌸";
+          let agentTitle = "Master Perfumer (SommelierAgent)";
+
+          if (step.agent === "InventoryAgent") {
+            agentColor = "var(--accent-cyan)";
+            agentIcon = "📦";
+            agentTitle = "Atelier Inventory Manager";
+          } else if (step.agent === "ChemistAgent") {
+            agentColor = "var(--accent-green)";
+            agentIcon = "🧪";
+            agentTitle = "Perfume Chemist";
+          } else if (step.agent === "ComplianceAgent") {
+            agentColor = "var(--accent-danger)";
+            agentIcon = "🛡️";
+            agentTitle = "Safety & IFRA Regulatory Director";
+          }
+
+          html += `
+            <div style="background:rgba(255,255,255,0.03); border-left:3px solid ${agentColor}; padding:0.8rem 1rem; border-radius:6px; margin-bottom:0.8rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                <span style="font-weight:700; color:${agentColor}; font-size:0.85rem;">${agentIcon} ${agentTitle}</span>
+                <span style="font-size:0.7rem; color:var(--text-muted); font-family:var(--font-mono)">Step ${step.step} / 4</span>
+              </div>
+              <div style="font-size:0.82rem; line-height:1.5;">${formatMarkdown(step.message)}</div>
+            </div>
+          `;
+        });
+      }
+
+      // Render Royal Sign-Off Certificate Card
+      html += `
+        <div style="background:linear-gradient(135deg, rgba(226,192,133,0.15), rgba(10,13,20,0.9)); border:2px solid var(--gold-primary); border-radius:12px; padding:1.2rem; margin-top:1.5rem; text-align:center; box-shadow:0 0 20px rgba(226,192,133,0.2);">
+          <div style="font-family:var(--font-title); color:var(--gold-primary); font-size:1.1rem; font-weight:700; letter-spacing:1px; margin-bottom:0.4rem;">
+            📜 ROYAL PERFUMERY AI COMMITTEE UNANIMOUS CERTIFICATE
+          </div>
+          <div style="font-size:0.85rem; color:var(--text-main); margin-bottom:1rem;">
+            ${formatMarkdown(data.finalConsensus)}
+          </div>
+          <div style="display:flex; justify-content:center; gap:1.2rem; flex-wrap:wrap; font-size:0.78rem; font-family:var(--font-mono); color:var(--accent-green);">
+            <span>✓ Master Perfumer Signed</span>
+            <span>✓ Stock Verified</span>
+            <span>✓ Chemically Formulated</span>
+            <span>✓ 100% IFRA Certified Safe</span>
+          </div>
+        </div>
+      `;
+
+      traceContent.innerHTML = html;
+      fetchTelemetry();
+    } catch (err) {
+      console.error(err);
+      traceContent.innerHTML = `<div style="color:var(--accent-danger)">Error convening AI committee: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  if (btnModalRestore) {
+    btnModalRestore.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/gateway/simulate-failover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enable: false })
+        });
+        await res.json();
+        showModalMsg("✅ Primary Cluster Restored to CLOSED state!");
+        fetchGatewayStatus();
+        fetchTelemetry();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  if (selectPrimaryProvider) {
+    selectPrimaryProvider.addEventListener('change', async () => {
+      const primaryProviderId = selectPrimaryProvider.value;
+      const disabledFallbacks = getDisabledFallbacks();
+
+      try {
+        const res = await fetch('/api/gateway/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ primaryProviderId, disabledFallbacks })
+        });
+        const data = await res.json();
+        showModalMsg(`Primary provider updated to ${data.primaryProvider.name}`);
+        fetchGatewayStatus();
+        fetchTelemetry();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  document.querySelectorAll('.chk-fallback').forEach(chk => {
+    chk.addEventListener('change', async () => {
+      const primaryProviderId = selectPrimaryProvider ? selectPrimaryProvider.value : 'gemini-1.5-flash';
+      const disabledFallbacks = getDisabledFallbacks();
+
+      try {
+        const res = await fetch('/api/gateway/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ primaryProviderId, disabledFallbacks })
+        });
+        await res.json();
+        showModalMsg(`Fallback providers updated`);
+        fetchGatewayStatus();
+        fetchTelemetry();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  });
+
+  function getDisabledFallbacks() {
+    const disabled = [];
+    document.querySelectorAll('.chk-fallback').forEach(chk => {
+      if (!chk.checked) {
+        disabled.push(chk.value);
+      }
+    });
+    return disabled;
+  }
+
+  function showModalMsg(msg) {
+    if (modalStatusMsg) {
+      modalStatusMsg.textContent = `✓ ${msg}`;
+      setTimeout(() => { modalStatusMsg.textContent = ''; }, 3000);
+    }
+  }
+
+  async function triggerSurgeSimulation() {
+    try {
+      showModalMsg("⚡ Simulating heavy traffic surge (10 concurrent requests)...");
+      const res = await fetch('/api/gateway/simulate-surge', { method: 'POST' });
+      await res.json();
+      fetchGatewayStatus();
+      fetchTelemetry();
+      showModalMsg("✓ Heavy traffic surge distributed across multi-region load balancers!");
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  if (btnSurgeTraffic) btnSurgeTraffic.addEventListener('click', triggerSurgeSimulation);
+  if (btnModalSurge) btnModalSurge.addEventListener('click', triggerSurgeSimulation);
+
+  if (btnModalOutage) {
+    btnModalOutage.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/gateway/simulate-failover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enable: true })
+        });
+        const data = await res.json();
+        showModalMsg(`⚠️ Outage failover triggered! Circuit breaker: ${data.circuitBreakerState}`);
+        fetchGatewayStatus();
+        fetchTelemetry();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  if (btnToggleOutage) {
+    btnToggleOutage.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/gateway/simulate-failover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enable: true })
+        });
+        await res.json();
+        fetchGatewayStatus();
+        fetchTelemetry();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  if (btnRestoreGateway) {
+    btnRestoreGateway.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/gateway/simulate-failover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enable: false })
+        });
+        await res.json();
+        fetchGatewayStatus();
+        fetchTelemetry();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  async function fetchGatewayStatus() {
+    try {
+      const res = await fetch('/api/gateway/status');
+      const data = await res.json();
+
+      // Render Primary Provider Badge
+      if (selectPrimaryProvider && data.primaryProvider) {
+        selectPrimaryProvider.value = data.primaryProvider.id;
+      }
+
+      // Render Replicas
+      if (lbReplicasContainer && data.loadBalancer && data.loadBalancer.replicas) {
+        const primaryName = data.primaryProvider ? data.primaryProvider.name : "Google Gemini 1.5 Flash";
+        lbReplicasContainer.innerHTML = `
+          <div style="font-size:0.75rem; color:var(--gold-primary); margin-bottom:0.5rem;">Active Primary: <strong>${escapeHtml(primaryName)}</strong></div>
+        ` + data.loadBalancer.replicas.map(r => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div>
+              <span style="color:${r.status === 'HEALTHY' ? 'var(--accent-green)' : 'var(--accent-danger)'}; font-weight:bold;">
+                ${r.status === 'HEALTHY' ? '● ONLINE' : '● OUTAGE'}
+              </span>
+              <span style="margin-left:0.5rem; color:var(--text-main); font-weight:600;">${escapeHtml(r.id)}</span>
+            </div>
+            <div style="color:var(--text-muted); font-size:0.75rem;">
+              Latency: <span style="color:var(--accent-cyan);">${r.latencyMs}ms</span> | Load: <span style="color:var(--gold-primary); font-weight:bold;">${r.loadCount} reqs</span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Render Circuit Breaker
+      if (circuitBreakerContainer && data.circuitBreaker) {
+        const cb = data.circuitBreaker;
+        const cbBadge = document.getElementById('circuit-breaker-badge');
+        if (cbBadge) {
+          cbBadge.textContent = cb.state === 'CLOSED' ? 'CLOSED (Healthy)' : 'OPEN (Outage Active)';
+          cbBadge.style.color = cb.state === 'CLOSED' ? 'var(--accent-green)' : 'var(--accent-danger)';
+          cbBadge.style.background = cb.state === 'CLOSED' ? 'rgba(52, 211, 153, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+        }
+
+        circuitBreakerContainer.innerHTML = `
+          <div style="padding:0.3rem 0;">
+            Primary Cluster State: <strong style="color:${cb.state === 'CLOSED' ? 'var(--accent-green)' : 'var(--accent-danger)'}">${cb.state}</strong>
+          </div>
+          <div style="padding:0.3rem 0;">
+            Consecutive Outage Failures: <strong style="color:var(--gold-primary)">${cb.failures} / 3</strong>
+          </div>
+          <div style="padding:0.3rem 0;">
+            Outage Mode: <strong style="color:${cb.simulatedOutage ? 'var(--accent-danger)' : 'var(--accent-green)'}">${cb.simulatedOutage ? 'ACTIVE (Failover Triggered)' : 'INACTIVE (Normal)'}</strong>
+          </div>
+        `;
+      }
+
+      // Render Fallback Chain Topology
+      const fallbackChainContainer = document.getElementById('fallback-chain-container');
+      if (fallbackChainContainer && data.fallbackChain) {
+        fallbackChainContainer.innerHTML = data.fallbackChain.map(f => {
+          const isActive = f.active !== false;
+          return `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.3rem 0; font-size:0.8rem;">
+              <span>Tier ${f.priority} (${f.type}): <strong>${escapeHtml(f.name)}</strong></span>
+              <span style="font-size:0.7rem; padding:0.1rem 0.4rem; border-radius:4px; font-weight:bold; ${isActive ? 'background:rgba(52,211,153,0.1); color:var(--accent-green);' : 'background:rgba(239,68,68,0.1); color:var(--accent-danger);'}">
+                ${isActive ? '✓ ACTIVE' : '✗ DESELECTED'}
+              </span>
+            </div>
+          `;
+        }).join('');
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   function updateAgentMessage(msgId, data) {
@@ -562,6 +1069,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="vec-bar-row"><span>Floral</span><div class="vec-bar-track"><div class="vec-bar-fill" style="width:${p.vector[2]*100}%"></div></div><span>${p.vector[2]}</span></div>
             <div class="vec-bar-row"><span>Oriental</span><div class="vec-bar-track"><div class="vec-bar-fill" style="width:${p.vector[3]*100}%"></div></div><span>${p.vector[3]}</span></div>
           </div>
+
+          <button class="btn-order-instant" data-perfume="${escapeHtml(p.name)}" style="background:linear-gradient(135deg, var(--gold-primary), #B48847); color:#000; font-weight:700; border:none; padding:0.6rem 1rem; border-radius:6px; margin-top:0.8rem; cursor:pointer; font-size:0.85rem; width:100%; font-family:var(--font-mono);">
+            🛒 1-Click Instant Order (${p.inRupees || '$' + p.price})
+          </button>
         </div>
       </div>
     `).join('');

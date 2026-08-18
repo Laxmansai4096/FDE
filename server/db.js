@@ -6,7 +6,7 @@
  * 2. Solar Malabar Citrus & Vetiver (Malabar Lemon & Coastal Vetiver)
  * 3. Royal Kashmir Saffron & Amber (Kashmir Saffron & Madagascar Vanilla)
  * 4. Imperial Kannauj Rose & Suede (Kannauj Damask Rose & Velvety Suede)
- * 5. Monsoon Vetiver & Mint (Earthy Indian Khus Vetiver & Rain Accord)
+ * 5. Monsoon Vetiver & Rain Mint (Earthy Indian Khus Vetiver & Rain Accord)
  * 6. Smoked Cardamom & Incense (Kerala Black Cardamom & Smoked Incense)
  */
 
@@ -100,8 +100,8 @@ const FRAGRANCE_CATALOG = [
     price: 210,
     inRupees: "₹16,000",
     sizes: ["50ml", "100ml"],
-    inStock: false,
-    stockCount: 0,
+    inStock: true,
+    stockCount: 52,
     rating: 4.85,
     topNotes: ["Earthy Khus Vetiver", "Wild Mint", "Green Cardamom"],
     heartNotes: ["Petrichor Rain Accord", "Geranium", "Cedarwood"],
@@ -119,61 +119,102 @@ const FRAGRANCE_CATALOG = [
     family: "Spicy Amber",
     price: 295,
     inRupees: "₹22,500",
-    sizes: ["100ml"],
+    sizes: ["50ml", "100ml"],
     inStock: true,
     stockCount: 22,
-    rating: 4.92,
-    topNotes: ["Kerala Black Cardamom", "Black Pepper", "Kashmir Saffron"],
-    heartNotes: ["Temple Incense", "Clove", "Plum Bark"],
-    baseNotes: ["Birch Tar", "Labdanum", "Tobacco Leaf"],
-    season: ["Winter"],
-    occasion: ["Formal Gala", "Intimate Evening"],
-    longevity: "12+ hours (Extrait de Parfum)",
-    description: "A mysterious journey through dark cardamom spice, smoldering temple incense, rich leather, and dark tobacco leaf.",
-    scentVector: [0.15, 0.85, 0.1, 0.95, 0.4, 0.1]
+    rating: 4.9,
+    topNotes: ["Kerala Black Cardamom", "Smoked Incense", "Nutmeg"],
+    heartNotes: ["Smoky Birch Tar", "Guaiacwood", "Nag Champa Accord"],
+    baseNotes: ["Dark Amber", "Labdanum", "Sandalwood"],
+    season: ["Winter", "Autumn"],
+    occasion: ["Meditation", "Evening", "Niche Luxury"],
+    longevity: "10-12 hours (Parfum)",
+    description: "A mysterious blend of crushed Kerala black cardamom pods, sacred temple incense, and smoky birch tar.",
+    scentVector: [0.05, 0.7, 0.1, 0.9, 0.3, 0.2]
   }
 ];
 
-// Knowledge Graph: Scent Pairings & Harmonies
-const KNOWLEDGE_GRAPH = {
-  "Oud": { family: "Woody", pairsWith: ["Sandalwood", "Rose", "Amber", "Cardamom"], mood: "Regal, Grounding" },
-  "Sandalwood": { family: "Woody", pairsWith: ["Oud", "Vanilla", "Vetiver", "Rose"], mood: "Calming, Sacred" },
-  "Saffron": { family: "Oriental", pairsWith: ["Vanilla", "Amber", "Oud", "Rose"], mood: "Opulent, Warm" },
-  "Rose": { family: "Floral", pairsWith: ["Sandalwood", "Suede", "Patchouli", "Musk"], mood: "Romantic, Regulating" },
-  "Lemon": { family: "Citrus", pairsWith: ["Vetiver", "Bergamot", "Neroli", "Amber"], mood: "Uplifting, Bright" },
-  "Vetiver": { family: "Earthy", pairsWith: ["Mint", "Lemon", "Cedarwood", "Cardamom"], mood: "Grounding, Fresh" }
-};
+function findMatchingProduct(query) {
+  if (!query) return null;
+  const lower = String(query).toLowerCase().trim();
 
-// Convert natural text to 6D Accord Vector
+  // 1. Check exact ID match or full product name match
+  for (const p of FRAGRANCE_CATALOG) {
+    const pName = p.name.toLowerCase();
+    if (p.id === query || lower === pName || lower.includes(pName)) {
+      return p;
+    }
+  }
+
+  // 2. Token overlap scoring to find highest matching catalog item
+  const queryTokens = lower.split(/[^a-z0-9]+/);
+  let bestMatch = null;
+  let highestScore = 0;
+
+  for (const p of FRAGRANCE_CATALOG) {
+    const pName = p.name.toLowerCase();
+    const pTokens = pName.split(/[^a-z0-9]+/);
+    let score = 0;
+
+    for (const t of queryTokens) {
+      if (t.length < 3) continue;
+      if (pName.includes(t)) {
+        score += 5;
+        if (pTokens.includes(t)) score += 5;
+      }
+    }
+
+    if (score > highestScore) {
+      highestScore = score;
+      bestMatch = p;
+    }
+  }
+
+  return highestScore > 0 ? bestMatch : null;
+}
+
 function textToScentVector(text) {
-  const lower = text.toLowerCase();
-  const vec = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
+  const lower = String(text).toLowerCase();
+  let citrus = 0.1, woody = 0.1, floral = 0.1, oriental = 0.1, gourmand = 0.1, fresh = 0.1;
 
-  if (lower.includes("citrus") || lower.includes("lemon") || lower.includes("bergamot") || lower.includes("orange")) vec[0] += 0.7;
-  if (lower.includes("woody") || lower.includes("wood") || lower.includes("cedar") || lower.includes("oud") || lower.includes("sandalwood")) vec[1] += 0.7;
-  if (lower.includes("floral") || lower.includes("rose") || lower.includes("jasmine") || lower.includes("violet") || lower.includes("peony")) vec[2] += 0.7;
-  if (lower.includes("oriental") || lower.includes("amber") || lower.includes("spicy") || lower.includes("incense") || lower.includes("saffron") || lower.includes("cardamom")) vec[3] += 0.7;
-  if (lower.includes("gourmand") || lower.includes("sweet") || lower.includes("vanilla") || lower.includes("tonka") || lower.includes("cinnamon")) vec[4] += 0.7;
-  if (lower.includes("fresh") || lower.includes("aquatic") || lower.includes("ocean") || lower.includes("clean") || lower.includes("mint") || lower.includes("rain") || lower.includes("khus")) vec[5] += 0.7;
+  if (lower.includes("lemon") || lower.includes("citrus") || lower.includes("bergamot") || lower.includes("orange")) citrus += 0.8;
+  if (lower.includes("sandalwood") || lower.includes("oud") || lower.includes("cedar") || lower.includes("woody")) woody += 0.8;
+  if (lower.includes("rose") || lower.includes("jasmine") || lower.includes("floral") || lower.includes("peony")) floral += 0.8;
+  if (lower.includes("amber") || lower.includes("incense") || lower.includes("spicy") || lower.includes("cardamom")) oriental += 0.8;
+  if (lower.includes("vanilla") || lower.includes("saffron") || lower.includes("sweet") || lower.includes("gourmand")) gourmand += 0.8;
+  if (lower.includes("mint") || lower.includes("rain") || lower.includes("vetiver") || lower.includes("fresh") || lower.includes("khus")) fresh += 0.8;
 
+  const vec = [citrus, woody, floral, oriental, gourmand, fresh];
   const mag = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
   return vec.map(v => Number((v / mag).toFixed(3)));
 }
 
-// Cosine Similarity between two 6D Vectors
 function cosineSimilarity(vecA, vecB) {
-  let dot = 0, magA = 0, magB = 0;
+  if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
+  let dotProduct = 0, normA = 0, normB = 0;
   for (let i = 0; i < vecA.length; i++) {
-    dot += vecA[i] * vecB[i];
-    magA += vecA[i] * vecA[i];
-    magB += vecB[i] * vecB[i];
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
   }
-  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+  if (normA === 0 || normB === 0) return 0;
+  return Number((dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))).toFixed(4));
 }
+
+const KNOWLEDGE_GRAPH = {
+  accords: {
+    "Sandalwood": { pairsWith: ["Oud", "Cardamom", "Amber", "Rose"], family: "Woody" },
+    "Oud": { pairsWith: ["Sandalwood", "Amber", "Rose", "Saffron"], family: "Oriental" },
+    "Rose": { pairsWith: ["Saffron", "Suede", "Sandalwood", "Patchouli"], family: "Floral" },
+    "Vetiver": { pairsWith: ["Lemon", "Bergamot", "Mint", "Cedar"], family: "Fresh" },
+    "Saffron": { pairsWith: ["Amber", "Vanilla", "Rose", "Oud"], family: "Spicy" }
+  }
+};
 
 module.exports = {
   FRAGRANCE_CATALOG,
   KNOWLEDGE_GRAPH,
+  findMatchingProduct,
   textToScentVector,
   cosineSimilarity
 };

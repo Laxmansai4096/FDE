@@ -1,8 +1,8 @@
 /**
- * AURA PERFUMERY - Autonomous ReAct Multi-Agent Tool Calling Engine (server/agent.js)
+ * AURA PERFUMERY - Autonomous ReAct Multi-Agent & Customer Support Order Agent (server/agent.js)
  */
 
-const { FRAGRANCE_CATALOG, KNOWLEDGE_GRAPH } = require('./db');
+const { FRAGRANCE_CATALOG, KNOWLEDGE_GRAPH, findMatchingProduct } = require('./db');
 const orderEngine = require('./orders');
 
 class AgentOrchestrator {
@@ -11,10 +11,13 @@ class AgentOrchestrator {
       { name: "tool_create_bespoke_formula", description: "Formulates a custom haute perfume oil blend based on user note preferences." },
       { name: "tool_check_inventory", description: "Queries atelier warehouse stock for specific fragrance products." },
       { name: "tool_graph_harmonize", description: "Queries scent knowledge graph for note pairings and accords." },
-      { name: "tool_place_order", description: "Places a new e-commerce order for a perfume product." },
+      { name: "tool_place_order", description: "Places a new e-commerce order for a perfume product with size & quantity." },
       { name: "tool_check_order_status", description: "Tracks shipping and delivery status of an existing order ID." },
       { name: "tool_cancel_order", description: "Cancels an active processing order and issues refund." }
     ];
+
+    // Stateful Order Draft for Interactive Multi-Turn Order Placement
+    this.pendingDraft = null;
   }
 
   runDomainBoundaryCheck(query) {
@@ -36,6 +39,10 @@ class AgentOrchestrator {
     return { isOutOfDomain: false };
   }
 
+  findCatalogProduct(query) {
+    return findMatchingProduct(query);
+  }
+
   async runAgentLoop(userQuery) {
     const boundaryCheck = this.runDomainBoundaryCheck(userQuery);
     if (boundaryCheck.isOutOfDomain) {
@@ -48,80 +55,186 @@ class AgentOrchestrator {
     const traceSteps = [];
     const lower = userQuery.toLowerCase();
 
-    // ReAct Loop Step 1: Intention Recognition
     traceSteps.push({
       type: "THOUGHT",
-      content: `Evaluating user query: "${userQuery}". Analyzing intent across Bespoke Blends, Inventory Check, Note Pairing, Order OMS.`
+      content: `Evaluating user prompt: "${userQuery}". Intention analysis: Delivery Tracking, Order Placement, Order Cancellation, Bespoke Blend.`
     });
 
-    // Intent 1: Check Order Status
-    if (lower.includes("ord-") && (lower.includes("track") || lower.includes("status") || lower.includes("check") || lower.includes("where"))) {
-      const match = userQuery.match(/ORD-\d{4}/i);
-      const orderId = match ? match[0].toUpperCase() : "ORD-8821";
+    // -------------------------------------------------------------------------
+    // INTENT 1: ORDER TRACKING & ESTIMATED DELIVERY DATE
+    // -------------------------------------------------------------------------
+    const isDeliveryQuery = lower.includes("delivery date") || lower.includes("when will my order") ||
+                            lower.includes("track") || lower.includes("shipping status") ||
+                            lower.includes("where is my order") || lower.includes("ord-") || lower.includes("carrier for");
+
+    if (isDeliveryQuery && !lower.includes("cancel") && !lower.includes("place") && !lower.includes("buy")) {
+      const match = userQuery.match(/ORD-[A-Z0-9]+/i);
+
+      if (match) {
+        const orderId = match[0].toUpperCase();
+        traceSteps.push({
+          type: "ACTION",
+          tool: "tool_check_order_status",
+          input: { orderId }
+        });
+
+        const res = orderEngine.checkOrderStatus(orderId);
+        traceSteps.push({
+          type: "OBSERVATION",
+          output: res
+        });
+
+        return {
+          finalAnswer: res.message,
+          traceSteps
+        };
+      } else {
+        traceSteps.push({
+          type: "THOUGHT",
+          content: "User inquired about order delivery date/tracking, but did not provide a valid Order ID. Requesting Order ID from user."
+        });
+
+        const answer = `📦 **AURA Order Tracking & Delivery Assistant**\n\n` +
+                       `I'd be delighted to check your estimated delivery date and shipping status!\n\n` +
+                       `Please provide your **Order ID** (for example: **ORD-8821** or **ORD-9430**) so I can pull up your exact carrier tracking, item details, and estimated delivery date.\n\n` +
+                       `*Tip: You can reply with "Track order ORD-8821"*`;
+        return { finalAnswer: answer, traceSteps };
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // INTENT 2: CANCEL ORDER
+    // -------------------------------------------------------------------------
+    if (lower.includes("cancel")) {
+      const match = userQuery.match(/ORD-[A-Z0-9]+/i);
+
+      if (match) {
+        const orderId = match[0].toUpperCase();
+        traceSteps.push({
+          type: "ACTION",
+          tool: "tool_cancel_order",
+          input: { orderId }
+        });
+
+        const res = orderEngine.cancelOrder(orderId);
+        traceSteps.push({
+          type: "OBSERVATION",
+          output: res
+        });
+
+        return { finalAnswer: res.message, traceSteps };
+      } else {
+        traceSteps.push({
+          type: "THOUGHT",
+          content: "User requested order cancellation but did not provide Order ID."
+        });
+
+        const answer = `❌ **AURA Order Cancellation Assistant**\n\n` +
+                       `Please specify the **Order ID** you wish to cancel (for example: *"Cancel order ORD-9430"*).\n\n` +
+                       `*Note: Only orders in **PROCESSING** status can be cancelled. Shipped orders (like ORD-8821) cannot be cancelled.*`;
+        return { finalAnswer: answer, traceSteps };
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // INTENT 3: INVENTORY & STOCK CHECK
+    // -------------------------------------------------------------------------
+    const isInventoryQuery = lower.includes("stock") || lower.includes("inventory") || 
+                             lower.includes("available") || lower.includes("units") || 
+                             lower.includes("how many") || lower.includes("in stock");
+
+    if (isInventoryQuery && !lower.includes("place") && !lower.includes("buy") && !lower.includes("cancel") && !isDeliveryQuery) {
+      const matchedProduct = this.findCatalogProduct(userQuery) || FRAGRANCE_CATALOG[0];
 
       traceSteps.push({
         type: "ACTION",
-        tool: "tool_check_order_status",
-        input: { orderId }
+        tool: "tool_check_inventory",
+        input: { product: matchedProduct.name }
       });
 
-      const res = orderEngine.checkOrderStatus(orderId);
       traceSteps.push({
         type: "OBSERVATION",
-        output: res
+        output: { name: matchedProduct.name, inStock: matchedProduct.inStock, count: matchedProduct.stockCount }
       });
 
-      return {
-        finalAnswer: res.message,
-        traceSteps
-      };
+      const stockMsg = `📦 **Atelier Inventory & Stock Report**\n\n` +
+                       `• **Product**: **${matchedProduct.name}**\n` +
+                       `• **Current Stock**: **${matchedProduct.stockCount} units available** in atelier warehouse\n` +
+                       `• **Availability Status**: **${matchedProduct.inStock ? 'IN STOCK (Ready for immediate dispatch)' : 'OUT OF STOCK'}**\n` +
+                       `• **Price**: ${matchedProduct.inRupees || '₹18,500'} ($${matchedProduct.price} USD)\n\n` +
+                       `👉 To place an order, ask *"Place an order for ${matchedProduct.name}"*.`;
+
+      return { finalAnswer: stockMsg, traceSteps };
     }
 
-    // Intent 2: Cancel Order
-    if (lower.includes("cancel") && (lower.includes("order") || lower.includes("ord-"))) {
-      const match = userQuery.match(/ORD-\d{4}/i);
-      const orderId = match ? match[0].toUpperCase() : "ORD-9430";
+    // -------------------------------------------------------------------------
+    // INTENT 4: USER-FRIENDLY & GUIDED ORDER PLACEMENT
+    // -------------------------------------------------------------------------
+    const isOrderPlacement = lower.includes("place order") || lower.includes("place an order") ||
+                             lower.includes("want to order") || lower.includes("order a bottle") ||
+                             lower.includes("buy") || lower.includes("purchase") ||
+                             lower.includes("how to order") || lower.includes("confirm order") ||
+                             (this.pendingDraft !== null && (lower.includes("yes") || lower.includes("proceed")));
 
-      traceSteps.push({
-        type: "ACTION",
-        tool: "tool_cancel_order",
-        input: { orderId }
+    if (isOrderPlacement) {
+      // Try parsing product, quantity, size from query
+      const matchedProduct = this.findCatalogProduct(userQuery);
+
+      // Filter out 50ml / 100ml text before parsing quantity
+      const cleanedForQty = userQuery.replace(/\b(50|100)\s*ml\b/gi, '');
+      const qtyMatch = cleanedForQty.match(/(\d+)\s*(bottle|unit|piece|item|qty|quantity)?/i);
+      const quantity = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+
+      // Parse Size
+      const size = lower.includes("50ml") ? "50ml" : "100ml";
+
+      const estDeliveryObj = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+      const formattedDelivery = estDeliveryObj.toLocaleDateString('en-IN', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
 
-      const res = orderEngine.cancelOrder(orderId);
-      traceSteps.push({
-        type: "OBSERVATION",
-        output: res
-      });
+      // CASE A: Vague instruction like "place an order" (No specific product recognized)
+      if (!matchedProduct) {
+        traceSteps.push({
+          type: "THOUGHT",
+          content: "User initiated order placement without specifying a product. Providing guided 1-click selection menu."
+        });
 
-      return {
-        finalAnswer: res.message,
-        traceSteps
-      };
-    }
+        const menuAnswer = `🛍️ **AURA Interactive Order Placement Assistant**\n\n` +
+                           `I'll be happy to help you place an order! Choose your desired fragrance below to place your order with **1-click**:\n\n` +
+                           `• **Royal Oud & Mysore Sandalwood** — ₹18,500 ($245)\n` +
+                           `• **Imperial Kannauj Rose & Suede** — ₹19,500 ($260)\n` +
+                           `• **Royal Kashmir Saffron & Amber** — ₹21,000 ($280)\n` +
+                           `• **Solar Malabar Citrus & Vetiver** — ₹14,500 ($195)\n` +
+                           `• **Monsoon Vetiver & Rain Mint** — ₹16,000 ($210)\n` +
+                           `• **Smoked Cardamom & Incense** — ₹22,500 ($295)\n\n` +
+                           `📦 **Order Specs**: 100ml Extrait de Parfum • 3-Day Express Shipping (Delivers by **${formattedDelivery}** via DHL Express India).\n\n` +
+                           `👉 Click one of the quick order buttons below or type *"Place order for [Perfume Name]"*:`;
+        return { finalAnswer: menuAnswer, traceSteps };
+      }
 
-    // Intent 3: Place Order
-    if (lower.includes("place order") || lower.includes("buy") || lower.includes("purchase")) {
+      // CASE B: Product recognized -> Instantly place order & issue official receipt
       traceSteps.push({
         type: "ACTION",
         tool: "tool_place_order",
-        input: { productQuery: userQuery }
+        input: { productQuery: matchedProduct.name, size, quantity }
       });
 
-      const res = orderEngine.placeOrder(userQuery);
+      const res = orderEngine.placeOrder(matchedProduct.name, size, quantity);
+      this.pendingDraft = null;
+
       traceSteps.push({
         type: "OBSERVATION",
         output: res
       });
 
-      return {
-        finalAnswer: res.message,
-        traceSteps
-      };
+      return { finalAnswer: res.message, traceSteps };
     }
 
-    // Intent 4: Bespoke Formula Creation
-    if (lower.includes("bespoke") || lower.includes("custom blend") || lower.includes("formulate") || lower.includes("create blend")) {
+    // -------------------------------------------------------------------------
+    // INTENT 5: BESPOKE FORMULA CREATION
+    // -------------------------------------------------------------------------
+    if (lower.includes("bespoke") || lower.includes("custom blend") || lower.includes("formulate") || lower.includes("create blend") || lower.includes("blend")) {
       traceSteps.push({
         type: "ACTION",
         tool: "tool_create_bespoke_formula",
@@ -142,43 +255,16 @@ class AgentOrchestrator {
         output: bespokeResult
       });
 
-      const finalAnswer = `Our Atelier Agent has formulated a custom bespoke creation for you: **${bespokeResult.formulaName}** ($340 / ₹28,000). Ratios: ${bespokeResult.topRatio}, ${bespokeResult.heartRatio}, and ${bespokeResult.baseRatio}. Concentration: ${bespokeResult.concentration}.`;
-      return { finalAnswer, traceSteps };
+      const answer = `Our Atelier Agent has formulated a custom bespoke creation for you: **${bespokeResult.formulaName}** (${bespokeResult.bottlePrice}). Ratios: ${bespokeResult.topRatio}, ${bespokeResult.heartRatio}, and ${bespokeResult.baseRatio}. Concentration: ${bespokeResult.concentration}.`;
+      return { finalAnswer: answer, traceSteps };
     }
 
-    // Intent 5: Note Harmonization
-    if (lower.includes("pair") || lower.includes("harmonize") || lower.includes("notes")) {
-      traceSteps.push({
-        type: "ACTION",
-        tool: "tool_graph_harmonize",
-        input: { note: "Bergamot" }
-      });
-
-      const res = KNOWLEDGE_GRAPH["Lemon"] || KNOWLEDGE_GRAPH["Oud"];
-      traceSteps.push({
-        type: "OBSERVATION",
-        output: res
-      });
-
-      const finalAnswer = `According to our Scent Knowledge Graph, top citrus notes pair harmoniously with **${res.pairsWith.join(', ')}**, creating a ${res.mood.toLowerCase()} olfactory impression.`;
-      return { finalAnswer, traceSteps };
-    }
-
-    // Default Fallback: Inventory Check & Recommendation
-    traceSteps.push({
-      type: "ACTION",
-      tool: "tool_check_inventory",
-      input: { catalogQuery: userQuery }
-    });
-
-    const topProduct = FRAGRANCE_CATALOG[0];
-    traceSteps.push({
-      type: "OBSERVATION",
-      output: { name: topProduct.name, inStock: topProduct.inStock, count: topProduct.stockCount }
-    });
-
-    const finalAnswer = `I recommend **${topProduct.name}** (${topProduct.inRupees} / $${topProduct.price}). Featuring ${topProduct.topNotes.join(', ')} over a core of ${topProduct.heartNotes.join(', ')}. Inventory status: ${topProduct.inStock ? `${topProduct.stockCount} bottles available` : 'Low stock'}.`;
-    return { finalAnswer, traceSteps };
+    // -------------------------------------------------------------------------
+    // FALLBACK
+    // -------------------------------------------------------------------------
+    const matched = this.findCatalogProduct(userQuery) || FRAGRANCE_CATALOG[0];
+    const fallbackAnswer = `Based on your request, I highly recommend **${matched.name}** (${matched.inRupees || '$' + matched.price}). It features prominent notes of ${matched.topNotes ? matched.topNotes.join(', ') : ''} over a core of ${matched.heartNotes ? matched.heartNotes.join(', ') : ''} and ${matched.baseNotes ? matched.baseNotes.join(', ') : ''}. ${matched.description} (Longevity: ${matched.longevity}).`;
+    return { finalAnswer: fallbackAnswer, traceSteps };
   }
 }
 

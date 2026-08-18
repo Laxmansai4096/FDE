@@ -20,13 +20,15 @@
       </div>
       <nav class="nav-links">
         <a href="#concierge" class="nav-item active">AI Scent Assistant</a>
-        <a href="#oms-inspector" class="nav-item">Order Status & Stock</a>
-        <a href="#gateway-inspector" class="nav-item">Gateway & Failover</a>
-        <a href="#autogen" class="nav-item">Multi-Agent AI Team</a>
-        <a href="#evals-inspector" class="nav-item">Evals & Security Audit</a>
+        <button id="nav-btn-oms" class="nav-item-btn">📦 Order Status & Stock</button>
+        <button id="nav-btn-autogen" class="nav-item-btn">🏢 Multi-Agent AI Team</button>
+        <button id="nav-btn-evals" class="nav-item-btn">🛡️ Evals & Security Audit</button>
       </nav>
-      <div class="nav-actions">
-        <button id="toggle-fde-drawer" class="btn-fde-ops" onclick="document.getElementById('fde-drawer').classList.add('open')">
+      <div class="nav-actions" style="display: flex; gap: 0.6rem; align-items: center;">
+        <button id="toggle-gateway-modal" class="btn-primary" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 700; border: none; padding: 0.5rem 0.9rem; border-radius: 6px; cursor: pointer; font-family: var(--font-mono); font-size: 0.78rem;">
+          ⚖️ LLM Gateway Control
+        </button>
+        <button id="toggle-fde-drawer" class="btn-fde-ops">
           <span class="pulse-dot"></span>
           ⚡ FDE Ops Inspector
         </button>
@@ -72,7 +74,7 @@
         </div>
       </div>
 
-      <!-- Quick Prompt Suggestions in Clear Indian English -->
+      <!-- Quick Prompt Suggestions -->
       <div class="prompt-chips">
         <span class="chip-label">Perfume Queries:</span>
         <button class="chip-btn" data-prompt="I need a warm smoky sandalwood fragrance for cold winter nights.">Smoky Mysore Sandalwood</button>
@@ -82,10 +84,12 @@
 
       <div class="prompt-chips" style="margin-top: -0.8rem">
         <span class="chip-label">Order Support:</span>
+        <button class="chip-btn chip-support" data-prompt="When will my order be delivered?">📅 Delivery Date Inquiry</button>
         <button class="chip-btn chip-support" data-prompt="Check status of order ORD-8821">📦 Track Order ORD-8821</button>
+        <button class="chip-btn chip-support" data-prompt="I want to place an order">🛍️ Guided Order Placement</button>
+        <button class="chip-btn chip-support" data-prompt="Place order for Royal Oud & Mysore Sandalwood">🛒 Quick Order Royal Oud</button>
         <button class="chip-btn chip-support" data-prompt="Cancel order ORD-9430">❌ Cancel Order ORD-9430</button>
-        <button class="chip-btn chip-support" data-prompt="Place order for Royal Oud & Mysore Sandalwood">🛍️ Order Mysore Sandalwood</button>
-        <button class="chip-btn chip-autogen" id="btn-chip-autogen" data-prompt="Formulate signature perfume for royal wedding gala">🏢 Run Multi-Agent AI Team</button>
+        <button class="chip-btn chip-autogen" id="btn-chip-autogen">🏢 Run Multi-Agent AI Team</button>
       </div>
 
       <!-- Chat Interface -->
@@ -108,168 +112,7 @@
       </div>
     </section>
 
-    <!-- Section 2: Order Management & Real-Time Relational Inventory Inspector -->
-    <section id="oms-inspector" class="section-card">
-      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <div class="section-badge">Order OMS + Relational Database (server/orders.js)</div>
-          <h2>Live Order Status & Inventory Inspector</h2>
-          <p>Verify real-time database state changes when placing orders, tracking shipments, or cancelling orders.</p>
-        </div>
-        <button id="btn-refresh-oms" class="btn-secondary">🔄 Refresh Database</button>
-      </div>
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
-        <!-- Live Orders Database Table -->
-        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(226, 192, 133, 0.2); border-radius: 8px; padding: 1.2rem;">
-          <h3 style="font-family: var(--font-mono); color: var(--gold-primary); font-size: 0.95rem; margin-bottom: 0.8rem;">
-            📦 Active Customer Orders (GET /api/orders)
-          </h3>
-          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-            <table class="trace-table">
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Perfume Name</th>
-                  <th>Status</th>
-                  <th>Tracking Number</th>
-                </tr>
-              </thead>
-              <tbody id="oms-orders-tbody">
-                <tr><td colspan="4" class="text-center">Loading orders database...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Live Product Inventory Stock Table -->
-        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 1.2rem;">
-          <h3 style="font-family: var(--font-mono); color: var(--accent-cyan); font-size: 0.95rem; margin-bottom: 0.8rem;">
-            🏭 Atelier Stock Inventory (GET /api/products)
-          </h3>
-          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-            <table class="trace-table">
-              <thead>
-                <tr>
-                  <th>Perfume Name</th>
-                  <th>Price (₹)</th>
-                  <th>Stock Count</th>
-                  <th>State</th>
-                </tr>
-              </thead>
-              <tbody id="oms-stock-tbody">
-                <tr><td colspan="4" class="text-center">Loading stock catalog...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Section 3: Gateway Load Balancer & Failover Circuit Breaker Inspector -->
-    <section id="gateway-inspector" class="section-card">
-      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <div class="section-badge">LLM Gateway Router + Load Balancer + Circuit Breaker</div>
-          <h2>Gateway Load Balancer & Outage Failover Inspector</h2>
-          <p>Inspect multi-region server health and simulate a cloud outage live.</p>
-        </div>
-        <div style="display: flex; gap: 0.8rem;">
-          <button id="btn-toggle-outage" class="btn-primary" style="background: var(--accent-danger); color: #fff;">
-            ⚠️ Simulate Cloud Outage Failover
-          </button>
-          <button id="btn-restore-gateway" class="btn-secondary">
-            ✅ Restore Primary Server Cluster
-          </button>
-        </div>
-      </div>
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-        <!-- Replica Pool Box -->
-        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 8px; padding: 1.2rem;">
-          <div style="color: var(--accent-green); font-family: var(--font-mono); font-weight: 700; margin-bottom: 0.6rem;">
-            ⚖️ Multi-Region Model Servers (GET /api/gateway/status)
-          </div>
-          <div id="lb-replicas-container" style="font-family: var(--font-mono); font-size: 0.8rem;">
-            Loading gateway servers...
-          </div>
-        </div>
-
-        <!-- Circuit Breaker Box -->
-        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(192, 132, 252, 0.3); border-radius: 8px; padding: 1.2rem;">
-          <div style="color: var(--accent-purple); font-family: var(--font-mono); font-weight: 700; margin-bottom: 0.6rem;">
-            ⚡ Circuit Breaker & Backup Chain
-          </div>
-          <div id="circuit-breaker-container" style="font-family: var(--font-mono); font-size: 0.8rem;">
-            Loading circuit breaker status...
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Section 4: Microsoft AutoGen 4-Agent Team Inspector -->
-    <section id="autogen" class="section-card">
-      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <div class="section-badge">Microsoft AutoGen Framework (POST /api/autogen)</div>
-          <h2>Microsoft AutoGen Multi-Agent Collaboration Team</h2>
-          <p>Watch 4 specialized AI agents (Sommelier, Inventory, Chemist, Compliance) collaborate in real time.</p>
-        </div>
-        <button id="btn-trigger-autogen" class="btn-primary" style="background: linear-gradient(135deg, var(--accent-purple), #8B5CF6); color: #fff;">
-          🏢 Execute AutoGen 4-Agent Team
-        </button>
-      </div>
-
-      <div class="autogen-team-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-        <div class="agent-card" style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(192, 132, 252, 0.3); border-radius: 8px; padding: 1rem;">
-          <div style="color: var(--gold-primary); font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem;">1. SommelierAgent</div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Extracts scent targets & royal Indian accords.</div>
-        </div>
-        <div class="agent-card" style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 1rem;">
-          <div style="color: var(--accent-cyan); font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem;">2. InventoryAgent</div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Queries SQL database to verify bottle stock.</div>
-        </div>
-        <div class="agent-card" style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 8px; padding: 1rem;">
-          <div style="color: var(--accent-green); font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem;">3. ChemistAgent</div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Calculates pure Attar oil compound ratios.</div>
-        </div>
-        <div class="agent-card" style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 8px; padding: 1rem;">
-          <div style="color: var(--accent-danger); font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem;">4. ComplianceAgent</div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">Validates IFRA allergen safety limits (<0.5% max).</div>
-        </div>
-      </div>
-
-      <!-- AutoGen Live Output Display Box -->
-      <div id="autogen-output-box" class="react-steps-box hidden" style="max-height: 400px; overflow-y: auto; background: #0A0D14;">
-        <div style="color: var(--gold-primary); font-weight: 700; margin-bottom: 0.8rem;">[Microsoft AutoGen Team Collaboration Log]</div>
-        <div id="autogen-trace-content"></div>
-      </div>
-    </section>
-
-    <!-- Section 5: LLMOps Evals & Security Red-Teaming Inspector -->
-    <section id="evals-inspector" class="section-card">
-      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <div class="section-badge">Ragas Quality Benchmarks + Security Red-Teaming</div>
-          <h2>AI Quality Evals & Security Red-Team Audit</h2>
-          <p>Run automated quality benchmark evaluations and security red-team audits with 1 click.</p>
-        </div>
-        <div style="display: flex; gap: 0.8rem;">
-          <button id="btn-run-evals" class="btn-primary" style="background: linear-gradient(135deg, var(--accent-cyan), #0284C7); color: #fff;">
-            📊 Run Ragas Quality Evals
-          </button>
-          <button id="btn-run-redteam" class="btn-primary" style="background: linear-gradient(135deg, var(--accent-danger), #DC2626); color: #fff;">
-            🛡 Run Security Audit
-          </button>
-        </div>
-      </div>
-
-      <div id="evals-output-box" class="react-steps-box hidden" style="max-height: 350px; overflow-y: auto; background: #0A0D14;">
-        <div id="evals-trace-content"></div>
-      </div>
-    </section>
-
-    <!-- Section 6: Catalog & Scent Vectors Matrix -->
+    <!-- Section 2: Catalog & Scent Vectors Matrix -->
     <section id="catalog" class="section-card">
       <div class="section-header">
         <div class="section-badge">Vector Database + Indian Perfume Catalog</div>
@@ -284,11 +127,336 @@
 
   </main>
 
-  <!-- FDE Operational Telemetry Drawer (Slide-out Inspector) -->
+  <!-- ========================================================================= -->
+  <!-- DEDICATED MODALS & DRAWERS (OPENED ONLY WHEN CLICKING TOP NAV BUTTONS)    -->
+  <!-- ========================================================================= -->
+
+  <!-- 1. LLM GATEWAY CONTROL & N8N VISUAL WORKFLOW MODAL -->
+  <div id="gateway-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(10px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: #0A0D14; border: 1px solid rgba(226, 192, 133, 0.4); border-radius: 12px; width: 100%; max-width: 1050px; max-height: 90vh; overflow-y: auto; padding: 1.8rem; box-shadow: 0 10px 50px rgba(0,0,0,0.9); font-family: var(--font-main); color: var(--text-main); position: relative;">
+      
+      <!-- Modal Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-size: 1.4rem;">⚖️</span>
+          <div>
+            <h2 style="font-family: var(--font-title); color: var(--gold-primary); font-size: 1.2rem; margin: 0;">LLM Gateway Load Balancing & n8n Visual Canvas</h2>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">Real-Time Provider Selection, Active Fallback Toggles, Heavy Traffic Surge Simulator & Interactive n8n Visual Node Graph</div>
+          </div>
+        </div>
+        <button id="close-gateway-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+
+      <!-- Controls Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.2rem; margin-bottom: 1.5rem;">
+        
+        <!-- Primary Provider Selector -->
+        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 8px; padding: 1rem;">
+          <label style="display: block; font-family: var(--font-mono); font-weight: 700; color: var(--accent-green); font-size: 0.85rem; margin-bottom: 0.5rem;">
+            🎯 Select Primary LLM Provider
+          </label>
+          <select id="select-primary-provider" style="width: 100%; background: #161B22; border: 1px solid rgba(226, 192, 133, 0.3); color: #fff; padding: 0.6rem 0.8rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.82rem; outline: none; cursor: pointer;">
+            <option value="gemini-1.5-flash">Google Gemini 1.5 Flash (Primary Multi-Region Pool)</option>
+            <option value="gemini-1.5-pro">Google Gemini 1.5 Pro (High Reasoning Architecture)</option>
+            <option value="gpt-4o">Azure OpenAI GPT-4o (Enterprise API Cluster)</option>
+            <option value="claude-3-5-sonnet">Anthropic Claude 3.5 Sonnet (High Accuracy)</option>
+            <option value="llama3:8b">Local Ollama Llama 3 (On-Premises Edge Server)</option>
+          </select>
+        </div>
+
+        <!-- Active Fallback Provider Checkboxes -->
+        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(192, 132, 252, 0.3); border-radius: 8px; padding: 1rem;">
+          <div style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-purple); font-size: 0.85rem; margin-bottom: 0.4rem;">
+            🔄 Active Fallback LLMs (Check to Enable / Uncheck to Deselect Offline Models)
+          </div>
+          <div style="display: grid; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.78rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main);">
+              <input type="checkbox" class="chk-fallback" value="azure-gpt4o" checked style="accent-color: var(--accent-purple);">
+              <span>Tier 1 Backup: <strong>Azure OpenAI GPT-4o</strong></span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main);">
+              <input type="checkbox" class="chk-fallback" value="claude-sonnet" checked style="accent-color: var(--accent-purple);">
+              <span>Tier 2 Backup: <strong>Anthropic Claude 3.5 Sonnet</strong></span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main);">
+              <input type="checkbox" class="chk-fallback" value="ollama-local" checked style="accent-color: var(--accent-purple);">
+              <span>Tier 3 Offline: <strong>Local Ollama Llama 3</strong></span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Action Buttons Toolbar -->
+      <div style="display: flex; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+        <button id="btn-modal-surge" class="btn-primary" style="flex: 1; background: linear-gradient(135deg, var(--accent-cyan), #0284C7); color: #fff; font-weight: 600;">
+          ⚡ Simulate Heavy Traffic Surge (10 Requests)
+        </button>
+        <button id="btn-modal-outage" class="btn-primary" style="flex: 1; background: linear-gradient(135deg, #EF4444, #DC2626); color: #fff; font-weight: 600;">
+          ⚠️ Simulate Primary Cloud Outage
+        </button>
+        <button id="btn-modal-restore" class="btn-secondary" style="border-color: var(--accent-green); color: var(--accent-green);">
+          ✅ Restore Primary Cluster
+        </button>
+      </div>
+
+      <div id="modal-status-msg" style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--gold-primary); text-align: center; margin-bottom: 1rem; min-height: 1.2rem;"></div>
+
+      <!-- Interactive n8n Visual Workflow Canvas inside Gateway Modal -->
+      <div class="n8n-canvas-wrapper">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div style="font-family: var(--font-mono); color: var(--gold-primary); font-weight: 700; font-size: 0.9rem;">
+            🔗 n8n Visual Node Workflow Canvas: Real-Time Dynamic Routing & Load Balancing Pipeline
+          </div>
+          <span style="font-size: 0.72rem; color: var(--accent-cyan); font-family: var(--font-mono); background: rgba(56,189,248,0.1); padding: 0.2rem 0.6rem; border-radius: 4px;">
+            ● LIVE TRAFFIC ANIME PIPELINE
+          </span>
+        </div>
+
+        <div class="n8n-nodes-flow">
+          <!-- Node 1: Ingress -->
+          <div class="n8n-node-card" id="n8n-node-1">
+            <div class="n8n-port n8n-port-out"></div>
+            <div class="n8n-node-header">
+              <span class="n8n-node-icon">📥</span>
+              <span class="n8n-node-title">1. User Ingress</span>
+            </div>
+            <div class="n8n-node-body">
+              <div>HTTP POST /api/chat</div>
+              <div style="color:var(--gold-primary); margin-top:0.3rem;">Raw Prompt Stream</div>
+            </div>
+          </div>
+
+          <!-- Node 2: Guardrails -->
+          <div class="n8n-node-card" id="n8n-node-2">
+            <div class="n8n-port n8n-port-in"></div>
+            <div class="n8n-port n8n-port-out"></div>
+            <div class="n8n-node-header">
+              <span class="n8n-node-icon">🛡️</span>
+              <span class="n8n-node-title">2. PII Guardrails</span>
+            </div>
+            <div class="n8n-node-body">
+              <div>Regex + LLM Guard</div>
+              <div style="color:var(--accent-green); margin-top:0.3rem;">PII Scrub & Sanitization</div>
+            </div>
+          </div>
+
+          <!-- Node 3: Semantic Cache -->
+          <div class="n8n-node-card" id="n8n-node-3">
+            <div class="n8n-port n8n-port-in"></div>
+            <div class="n8n-port n8n-port-out"></div>
+            <div class="n8n-node-header">
+              <span class="n8n-node-icon">⚡</span>
+              <span class="n8n-node-title">3. Semantic Cache</span>
+            </div>
+            <div class="n8n-node-body">
+              <div>Vector Similarity ≥ 0.88</div>
+              <div style="color:var(--accent-purple); margin-top:0.3rem;" id="n8n-cache-status">Cosine Match Lookup</div>
+            </div>
+          </div>
+
+          <!-- Node 4: Load Balancer & Replicas -->
+          <div class="n8n-node-card" id="n8n-node-4">
+            <div class="n8n-port n8n-port-in"></div>
+            <div class="n8n-port n8n-port-out"></div>
+            <div class="n8n-node-header">
+              <span class="n8n-node-icon">⚖️</span>
+              <span class="n8n-node-title">4. Load Balancer</span>
+            </div>
+            <div class="n8n-node-body">Round-Robin Replicas</div>
+            <div class="n8n-subnode-list">
+              <div class="n8n-subnode-item" id="n8n-sub-us"><span>🇺🇸 US-East</span><span style="color:var(--accent-cyan)">45ms</span></div>
+              <div class="n8n-subnode-item" id="n8n-sub-eu"><span>🇪🇺 EU-West</span><span style="color:var(--accent-cyan)">38ms</span></div>
+              <div class="n8n-subnode-item" id="n8n-sub-ap"><span>🇮🇳 AP-South</span><span style="color:var(--accent-cyan)">62ms</span></div>
+            </div>
+          </div>
+
+          <!-- Node 5: Circuit Breaker & Fallbacks -->
+          <div class="n8n-node-card" id="n8n-node-5">
+            <div class="n8n-port n8n-port-in"></div>
+            <div class="n8n-port n8n-port-out"></div>
+            <div class="n8n-node-header">
+              <span class="n8n-node-icon">⚠️</span>
+              <span class="n8n-node-title">5. Fallback Router</span>
+            </div>
+            <div class="n8n-node-body" id="n8n-cb-text">CLOSED (Normal)</div>
+            <div class="n8n-subnode-list">
+              <div class="n8n-subnode-item" id="n8n-sub-az"><span>☁️ Azure GPT-4o</span></div>
+              <div class="n8n-subnode-item" id="n8n-sub-cl"><span>🧠 Claude 3.5</span></div>
+              <div class="n8n-subnode-item" id="n8n-sub-ol"><span>💻 Local Ollama</span></div>
+            </div>
+          </div>
+
+          <!-- Node 6: Output Synthesis -->
+          <div class="n8n-node-card" id="n8n-node-6">
+            <div class="n8n-port n8n-port-in"></div>
+            <div class="n8n-node-header">
+              <span class="n8n-node-icon">✨</span>
+              <span class="n8n-node-title">6. Output Synthesis</span>
+            </div>
+            <div class="n8n-node-body">
+              <div>Structured Markdown</div>
+              <div style="color:var(--gold-primary); margin-top:0.3rem;">Span Audit Logged</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 2. OMS ORDERS & STOCK INVENTORY DATABASE MODAL -->
+  <div id="oms-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: #0A0D14; border: 1px solid rgba(226, 192, 133, 0.4); border-radius: 12px; width: 100%; max-width: 850px; max-height: 85vh; overflow-y: auto; padding: 1.8rem; box-shadow: 0 10px 40px rgba(0,0,0,0.8); font-family: var(--font-main); color: var(--text-main); position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-size: 1.4rem;">📦</span>
+          <div>
+            <h2 style="font-family: var(--font-title); color: var(--gold-primary); font-size: 1.2rem; margin: 0;">Order OMS & Relational Database Inspector</h2>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">Real-Time Active Customer Orders & Atelier Inventory Stock Table</div>
+          </div>
+        </div>
+        <button id="close-oms-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        <!-- Live Orders Database Table -->
+        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(226, 192, 133, 0.2); border-radius: 8px; padding: 1.2rem;">
+          <h3 style="font-family: var(--font-mono); color: var(--gold-primary); font-size: 0.95rem; margin-bottom: 0.8rem;">📦 Active Customer Orders</h3>
+          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <table class="trace-table">
+              <thead><tr><th>Order ID</th><th>Perfume Name</th><th>Status</th><th>Tracking Number</th></tr></thead>
+              <tbody id="oms-orders-tbody"><tr><td colspan="4" class="text-center">Loading orders database...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Live Stock Inventory Table -->
+        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 1.2rem;">
+          <h3 style="font-family: var(--font-mono); color: var(--accent-cyan); font-size: 0.95rem; margin-bottom: 0.8rem;">🏭 Atelier Stock Inventory</h3>
+          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <table class="trace-table">
+              <thead><tr><th>Perfume Name</th><th>Price (₹)</th><th>Stock Count</th><th>State</th></tr></thead>
+              <tbody id="oms-stock-tbody"><tr><td colspan="4" class="text-center">Loading stock catalog...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ROYAL PERFUMERY AI COMMITTEE MODAL (SIMPLE & HANDY FOR NAIVE USERS) -->
+  <div id="autogen-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(10px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: #0A0D14; border: 1px solid rgba(192, 132, 252, 0.4); border-radius: 14px; width: 100%; max-width: 900px; max-height: 88vh; overflow-y: auto; padding: 2rem; box-shadow: 0 10px 50px rgba(0,0,0,0.9); font-family: var(--font-main); color: var(--text-main); position: relative;">
+      
+      <!-- Modal Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.8rem;">
+          <span style="font-size: 1.8rem;">👑</span>
+          <div>
+            <h2 style="font-family: var(--font-title); color: var(--gold-primary); font-size: 1.3rem; margin: 0;">Royal Perfumery Expert AI Committee</h2>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;">
+              4 specialized AI experts work together to formulate, check inventory stock, chemically balance, and safety-certify your custom fragrance.
+            </div>
+          </div>
+        </div>
+        <button id="close-autogen-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer; padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+
+      <!-- 4 AI Specialist Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="background: rgba(226, 192, 133, 0.08); border: 1px solid rgba(226, 192, 133, 0.3); border-radius: 10px; padding: 1rem;">
+          <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">🌸</div>
+          <div style="color: var(--gold-primary); font-weight: 700; font-size: 0.88rem;">1. Master Perfumer</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Selects royal scent notes & accord profiles</div>
+        </div>
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 1rem;">
+          <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">📦</div>
+          <div style="color: var(--accent-cyan); font-weight: 700; font-size: 0.88rem;">2. Inventory Manager</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Checks atelier database for bottle availability</div>
+        </div>
+        <div style="background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 10px; padding: 1rem;">
+          <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">🧪</div>
+          <div style="color: var(--accent-green); font-weight: 700; font-size: 0.88rem;">3. Perfume Chemist</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Calculates exact ingredient mixing ratios</div>
+        </div>
+        <div style="background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 10px; padding: 1rem;">
+          <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">🛡️</div>
+          <div style="color: var(--accent-danger); font-weight: 700; font-size: 0.88rem;">4. Safety & IFRA Director</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Certifies health safety & skin allergen limits</div>
+        </div>
+      </div>
+
+      <!-- Easy 1-Click Formula Preset Buttons for Naive Users -->
+      <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 600; font-size: 0.88rem; color: var(--gold-primary); margin-bottom: 0.8rem;">
+          ✨ Select a Formula Request for the AI Committee:
+        </div>
+        <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+          <button class="autogen-preset-btn btn-secondary" data-query="Formulate signature perfume for royal wedding gala" style="border-color: var(--gold-primary); color: var(--gold-primary);">
+            👑 Royal Wedding Gala Perfume
+          </button>
+          <button class="autogen-preset-btn btn-secondary" data-query="Formulate traditional monsoon Mysore attar blend" style="border-color: var(--accent-cyan); color: var(--accent-cyan);">
+            🕌 Traditional Monsoon Mysore Attar
+          </button>
+          <button class="autogen-preset-btn btn-secondary" data-query="Formulate evening black-tie Kashmir cardamom fragrance" style="border-color: var(--accent-purple); color: var(--accent-purple);">
+            ✨ Evening Black-Tie Oud & Saffron
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 1.2rem;">
+        <button id="btn-trigger-autogen" class="btn-primary" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 700; padding: 0.7rem 1.5rem; font-size: 0.9rem;">
+          ✨ Convene 4-Agent AI Committee & Formulate Perfume
+        </button>
+      </div>
+
+      <!-- Committee Live Conversation & Final Sign-Off Certificate -->
+      <div id="autogen-output-box" class="hidden" style="background: #0D1117; border: 1px solid rgba(226, 192, 133, 0.3); border-radius: 10px; padding: 1.2rem; max-height: 400px; overflow-y: auto;">
+        <div style="font-family: var(--font-mono); color: var(--gold-primary); font-weight: 700; font-size: 0.9rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+          📜 Live AI Committee Consultation & Final Certificate
+        </div>
+        <div id="autogen-trace-content"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. RAG EVALS & RED-TEAMING AUDIT MODAL -->
+  <div id="evals-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: #0A0D14; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 12px; width: 100%; max-width: 850px; max-height: 85vh; overflow-y: auto; padding: 1.8rem; box-shadow: 0 10px 40px rgba(0,0,0,0.8); font-family: var(--font-main); color: var(--text-main); position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-size: 1.4rem;">🛡️</span>
+          <div>
+            <h2 style="font-family: var(--font-title); color: var(--accent-cyan); font-size: 1.2rem; margin: 0;">LLMOps Evals & Security Red-Teaming Inspector</h2>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">Ragas Framework Benchmarks & Automated Vulnerability Audit</div>
+          </div>
+        </div>
+        <button id="close-evals-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+        <button id="btn-run-evals" class="btn-primary" style="flex: 1; background: linear-gradient(135deg, var(--accent-cyan), #0284C7); color: #fff;">
+          📊 Run RAG Evals Suite
+        </button>
+        <button id="btn-run-redteam" class="btn-primary" style="flex: 1; background: linear-gradient(135deg, #EF4444, #B91C1C); color: #fff;">
+          🛡️ Run Security Red-Teaming Audit
+        </button>
+      </div>
+
+      <div id="evals-results-box" class="react-steps-box hidden" style="max-height: 350px; overflow-y: auto; background: #0A0D14;">
+        <div id="evals-results-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. FDE OPERATIONAL TELEMETRY DRAWER (SLIDE-OUT INSPECTOR) -->
   <div id="fde-drawer" class="fde-drawer">
     <div class="drawer-header">
       <div class="drawer-title">
-        <span class="terminal-icon">⚡</span> FDE Operations & LLM Gateway Inspector
+        <span class="terminal-icon">⚡</span> FDE Operations & Telemetry Inspector
       </div>
       <button id="close-drawer" class="btn-close" onclick="document.getElementById('fde-drawer').classList.remove('open')">&times;</button>
     </div>

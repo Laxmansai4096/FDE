@@ -2,7 +2,7 @@
  * AURA PERFUMERY - Relational Order Management System (OMS) (server/orders.js)
  */
 
-const { FRAGRANCE_CATALOG } = require('./db');
+const { FRAGRANCE_CATALOG, findMatchingProduct } = require('./db');
 
 class OrderManagementSystem {
   constructor() {
@@ -39,7 +39,7 @@ class OrderManagementSystem {
     ];
   }
 
-  // 1. Check Order Tracking Status
+  // 1. Check Order Tracking Status & Estimated Delivery Date
   checkOrderStatus(orderId) {
     const cleanId = String(orderId).trim().toUpperCase();
     const order = this.orders.find(o => o.orderId === cleanId);
@@ -47,9 +47,14 @@ class OrderManagementSystem {
     if (!order) {
       return {
         found: false,
-        message: `Order '${cleanId}' not found in Order Management System. Please check your order ID.`
+        message: `Order **'${cleanId}'** was not found in our Order Management System. Please verify your Order ID (for example: **ORD-8821** or **ORD-9430**).`
       };
     }
+
+    const deliveryDateObj = new Date(order.estimatedDelivery);
+    const formattedDelivery = deliveryDateObj.toLocaleDateString('en-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
 
     return {
       found: true,
@@ -59,25 +64,26 @@ class OrderManagementSystem {
       carrier: order.carrier,
       trackingNumber: order.trackingNumber,
       estimatedDelivery: order.estimatedDelivery,
-      message: `[Customer Support Assistant] Order **${order.orderId}** for **${order.productName}** is currently **${order.status}**. Carrier: ${order.carrier}. Tracking Code: \`${order.trackingNumber}\`. Estimated Delivery: ${new Date(order.estimatedDelivery).toLocaleDateString('en-IN')}.`
+      formattedDeliveryDate: formattedDelivery,
+      message: `📦 **Order Status & Estimated Delivery for ${order.orderId}**\n\n` +
+               `• **Product**: ${order.productName} (${order.size})\n` +
+               `• **Current Status**: **${order.status}**\n` +
+               `• 🚚 **Shipping Carrier**: ${order.carrier}\n` +
+               `• 🏷️ **Tracking Code**: \`${order.trackingNumber}\`\n` +
+               `• 📅 **Estimated Delivery Date**: **${formattedDelivery}**\n\n` +
+               `Your package is currently in transit with ${order.carrier} and scheduled for delivery on time.`
     };
   }
 
-  // 2. Place New Order
+  // 2. Place New Order with Clear Delivery Breakdown
   placeOrder(productQuery, size = "100ml", quantity = 1) {
-    const lowerQuery = String(productQuery).toLowerCase();
-    
-    // Find matching catalog product
-    const product = FRAGRANCE_CATALOG.find(p => 
-      p.name.toLowerCase().includes(lowerQuery) || 
-      lowerQuery.includes(p.name.toLowerCase()) ||
-      p.id === productQuery
-    ) || FRAGRANCE_CATALOG[0]; // Default to Royal Oud & Mysore Sandalwood
+    // Find matching catalog product with high token precision
+    const product = findMatchingProduct(productQuery) || FRAGRANCE_CATALOG[0];
 
     if (!product.inStock || product.stockCount < quantity) {
       return {
         success: false,
-        message: `Product '${product.name}' is currently out of stock in our atelier inventory.`
+        message: `Product **'${product.name}'** is currently out of stock in our atelier inventory.`
       };
     }
 
@@ -89,8 +95,14 @@ class OrderManagementSystem {
 
     const newOrderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
     const trackingNum = `TRK-AURA-${Math.floor(100000 + Math.random() * 900000)}`;
+    const unitPriceRupees = product.priceInRupees ? parseInt(product.priceInRupees.replace(/[^\d]/g, '')) : 18500;
     const totalPrice = product.price * quantity;
-    const rupeeTotal = `₹${(18500 * quantity).toLocaleString('en-IN')}`;
+    const rupeeTotal = `₹${(unitPriceRupees * quantity).toLocaleString('en-IN')}`;
+
+    const estDeliveryDateObj = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    const formattedDelivery = estDeliveryDateObj.toLocaleDateString('en-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
 
     const newOrder = {
       orderId: newOrderId,
@@ -104,7 +116,7 @@ class OrderManagementSystem {
       carrier: "DHL Express India",
       trackingNumber: trackingNum,
       orderDate: new Date().toISOString(),
-      estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+      estimatedDelivery: estDeliveryDateObj.toISOString()
     };
 
     this.orders.unshift(newOrder);
@@ -112,11 +124,19 @@ class OrderManagementSystem {
     return {
       success: true,
       order: newOrder,
-      message: `🎉 Order **${newOrderId}** placed successfully! Item: **${product.name}** (${size}). Total: $${totalPrice} (${rupeeTotal}). Carrier: DHL Express India (\`${trackingNum}\`). Inventory remaining: ${product.stockCount} units.`
+      formattedDeliveryDate: formattedDelivery,
+      message: `🎉 **Order Placed Successfully!**\n\n` +
+               `• **Order ID**: **${newOrderId}**\n` +
+               `• **Product**: ${product.name} (${size} x ${quantity})\n` +
+               `• **Total Amount**: **${rupeeTotal}** ($${totalPrice} USD)\n` +
+               `• 🚚 **Shipping Carrier**: DHL Express India (Tracking Code: \`${trackingNum}\`)\n` +
+               `• 📅 **Estimated Delivery Date**: **${formattedDelivery}**\n` +
+               `• 📦 **Remaining Atelier Inventory**: ${product.stockCount} units\n\n` +
+               `Thank you for choosing AURA Perfumery! You can track your shipment anytime by asking *"Track order ${newOrderId}"*.`
     };
   }
 
-  // 3. Cancel Order
+
   cancelOrder(orderId) {
     const cleanId = String(orderId).trim().toUpperCase();
     const order = this.orders.find(o => o.orderId === cleanId);

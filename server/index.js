@@ -79,9 +79,31 @@ app.post('/api/chat', async (req, res) => {
     });
   }
 
-  // Customer Support Intent Interceptor (Order Tracking, Order Cancel, Order Placement)
+  // Customer Support & Inventory Intent Interceptor (Order Tracking, Delivery Date, Inventory Check, Order Cancel, Order Placement)
   const lower = guardrailStatus.sanitizedQuery.toLowerCase();
-  if (lower.includes("ord-") || lower.includes("track order") || lower.includes("cancel order") || lower.includes("place order")) {
+  const isOrderIntent = lower.includes("ord-") || 
+                        lower.includes("track") || 
+                        lower.includes("delivery date") || 
+                        lower.includes("when will my order") || 
+                        lower.includes("shipping status") || 
+                        lower.includes("cancel") || 
+                        lower.includes("place order") || 
+                        lower.includes("place an order") || 
+                        lower.includes("want to order") || 
+                        lower.includes("order a bottle") || 
+                        lower.includes("buy") || 
+                        lower.includes("purchase") || 
+                        lower.includes("how to order") || 
+                        lower.includes("confirm order") || 
+                        lower.includes("stock") || 
+                        lower.includes("inventory") || 
+                        lower.includes("available") || 
+                        lower.includes("units") || 
+                        lower.includes("how many") || 
+                        lower.includes("in stock") ||
+                        (agentOrchestrator.pendingDraft !== null && (lower.includes("confirm") || lower.includes("yes") || lower.includes("proceed")));
+
+  if (isOrderIntent) {
     const agentRes = await agentOrchestrator.runAgentLoop(guardrailStatus.sanitizedQuery);
     const latencyMs = Date.now() - startTime;
     
@@ -113,7 +135,7 @@ app.post('/api/chat', async (req, res) => {
   const { queryVector, retrieved } = ragResult;
 
   // Step C: Dynamic Route & Load Balancer Resolution
-  const routeDecision = gateway.resolveDynamicRoute(queryVector, guardrailStatus.flagged);
+  const routeDecision = gateway.resolveDynamicRoute(queryVector, guardrailStatus.flagged, guardrailStatus.sanitizedQuery);
 
   if (routeDecision.routeType === "CACHE_HIT") {
     const latencyMs = Date.now() - startTime;
@@ -209,6 +231,35 @@ app.get('/api/gateway/status', (req, res) => {
 app.post('/api/gateway/simulate-failover', (req, res) => {
   const { enable = true } = req.body;
   res.json(gateway.setSimulatedOutage(enable));
+});
+
+// Gateway Configuration API (Primary Provider & Active/Disabled Fallback Toggles)
+app.post('/api/gateway/configure', (req, res) => {
+  const { primaryProviderId, disabledFallbacks = [] } = req.body;
+  res.json(gateway.configureGateway({ primaryProviderId, disabledFallbacks }));
+});
+
+// Gateway Heavy Traffic Surge Simulator API (Simulates 10 Concurrent Requests across Multi-Region Load Balancers)
+app.post('/api/gateway/simulate-surge', (req, res) => {
+  const surgeQueries = [
+    "Smoky Mysore Sandalwood for winter",
+    "Solar Malabar citrus for summer",
+    "Imperial Kannauj Rose & Suede",
+    "Kashmir Saffron Extrait",
+    "Monsoon Vetiver & Cedar",
+    "Assam Oud & Bergamot",
+    "Kerala Black Cardamom",
+    "Birch Tar & Smoked Leather",
+    "White Musk & Lychee",
+    "Damask Rose & Velvet Suede"
+  ];
+
+  surgeQueries.forEach(q => {
+    const dummyVector = Array.from({ length: 6 }, () => Math.random());
+    gateway.resolveDynamicRoute(dummyVector, false, q);
+  });
+
+  res.json(gateway.getDiagnosticReport());
 });
 
 // Customer Support REST APIs
@@ -320,9 +371,18 @@ app.post('/api/quiz', (req, res) => {
   res.json({ recommendations: ragResult.retrieved, queryVector: ragResult.queryVector });
 });
 
-app.listen(PORT, () => {
-  console.log(`=======================================================`);
-  console.log(`  AURA PERFUMERY - FDE Enterprise AI Platform Server  `);
-  console.log(`  Running on http://localhost:3000`);
-  console.log(`=======================================================`);
+// Resume PDF Download Route
+app.get('/resume.pdf', (req, res) => {
+  res.sendFile(path.join(__dirname, '../resume.pdf'));
 });
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`=======================================================`);
+    console.log(`  AURA PERFUMERY - FDE Enterprise AI Platform Server  `);
+    console.log(`  Running on http://localhost:3000`);
+    console.log(`=======================================================`);
+  });
+}
+
+module.exports = app;
