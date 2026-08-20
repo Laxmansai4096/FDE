@@ -39,39 +39,44 @@ class OrderManagementSystem {
     ];
   }
 
-  // 1. Check Order Tracking Status & Estimated Delivery Date
-  checkOrderStatus(orderId) {
+  // 1. Check Order Tracking Status & Estimated Delivery Date (Supports Single or Multi-Order Tracking)
+  checkOrderStatus(orderId = "") {
+    let targetOrders = [];
     const cleanId = String(orderId).trim().toUpperCase();
-    const order = this.orders.find(o => o.orderId === cleanId);
 
-    if (!order) {
+    if (!cleanId || cleanId.includes("ALL") || cleanId.includes("ACTIVE") || cleanId === "STATUS" || cleanId.includes("ORDERS")) {
+      targetOrders = [...this.orders];
+    } else {
+      // Find all orders mentioned in cleanId
+      targetOrders = this.orders.filter(o => cleanId.includes(o.orderId.toUpperCase()));
+      if (targetOrders.length === 0) {
+        // Fallback: check if single order ID matches
+        const singleMatch = this.orders.find(o => o.orderId === cleanId);
+        if (singleMatch) targetOrders = [singleMatch];
+      }
+    }
+
+    if (targetOrders.length === 0) {
       return {
         found: false,
-        message: `Order **'${cleanId}'** was not found in our Order Management System. Please verify your Order ID (for example: **ORD-8821** or **ORD-9430**).`
+        message: `No matching orders found in our Order Management System. Please verify your Order ID (for example: **ORD-8821** or **ORD-9430**).`
       };
     }
 
-    const deliveryDateObj = new Date(order.estimatedDelivery);
-    const formattedDelivery = deliveryDateObj.toLocaleDateString('en-IN', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
+    let summaryLines = targetOrders.map(order => {
+      const deliveryDateObj = new Date(order.estimatedDelivery);
+      const formattedDelivery = deliveryDateObj.toLocaleDateString('en-IN', {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+      });
+      return `📦 **Order ${order.orderId}**: **${order.productName}** (${order.size}) x ${order.quantity || 1}\n` +
+             `   • Status: **${order.status}** • Carrier: ${order.carrier} (\`${order.trackingNumber}\`)\n` +
+             `   • Total: **${order.priceInRupees || '$' + order.totalPrice}** • Estimated Delivery: **${formattedDelivery}**`;
+    }).join('\n\n');
 
     return {
       found: true,
-      orderId: order.orderId,
-      productName: order.productName,
-      status: order.status,
-      carrier: order.carrier,
-      trackingNumber: order.trackingNumber,
-      estimatedDelivery: order.estimatedDelivery,
-      formattedDeliveryDate: formattedDelivery,
-      message: `📦 **Order Status & Estimated Delivery for ${order.orderId}**\n\n` +
-               `• **Product**: ${order.productName} (${order.size})\n` +
-               `• **Current Status**: **${order.status}**\n` +
-               `• 🚚 **Shipping Carrier**: ${order.carrier}\n` +
-               `• 🏷️ **Tracking Code**: \`${order.trackingNumber}\`\n` +
-               `• 📅 **Estimated Delivery Date**: **${formattedDelivery}**\n\n` +
-               `Your package is currently in transit with ${order.carrier} and scheduled for delivery on time.`
+      orders: targetOrders,
+      message: `📦 **Real-Time Active Customer Orders (${targetOrders.length} Tracked)**\n\n${summaryLines}`
     };
   }
 

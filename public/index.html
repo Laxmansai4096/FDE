@@ -57,58 +57,145 @@
   <main class="main-container">
     
     <!-- Section 1: AI Scent Assistant (Chatbot + RAG + Customer Support + Agentic Mode) -->
-    <section id="concierge" class="section-card">
-      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+    <!-- Section 1: AI Assistant & Olfactory Sommelier Chatbot -->
+    <section id="concierge" class="section-card" style="border: 1px solid rgba(226, 192, 133, 0.3); background: linear-gradient(145deg, rgba(13, 17, 26, 0.95), rgba(8, 10, 16, 0.95)); box-shadow: 0 15px 40px rgba(0,0,0,0.6);">
+      
+      <!-- Section Header with Mode Toggle & Human Escalation Button -->
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1.2rem; margin-bottom: 1.5rem;">
         <div>
-          <div class="section-badge">RAG Search + Customer Support OMS + LLM Gateway + ReAct Agent</div>
-          <h2>AI Fragrance & Order Support Assistant</h2>
-          <p>Ask for perfume recommendations, track existing orders, place new orders, or enable Autonomous Agent Mode.</p>
+          <div class="section-badge" style="background: rgba(226, 192, 133, 0.12); border: 1px solid rgba(226, 192, 133, 0.3); color: var(--gold-primary); font-size: 0.72rem; letter-spacing: 1px; font-weight: 700; text-transform: uppercase;">
+            Enterprise FDE AI Platform | Multi-Agent Concierge
+          </div>
+          <h2 style="font-family: var(--font-serif); color: #FFFFFF; font-size: 1.8rem; margin: 0.3rem 0; font-weight: 600;">
+            🌸 AI Olfactory Sommelier & Order Support Assistant
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.92rem; margin: 0;">
+            Instant perfume discovery, real-time OMS order tracking, guided order placement, and multi-agent bespoke formulation.
+          </p>
         </div>
 
-        <div class="mode-toggle-container">
-          <label for="agent-mode-toggle" class="toggle-label">
-            <input type="checkbox" id="agent-mode-toggle">
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">Autonomous Agent Mode (ReAct Tool Calling)</span>
-          </label>
-        </div>
-      </div>
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <button id="btn-human-escalate" style="background: rgba(192, 132, 252, 0.12); border: 1px solid rgba(192, 132, 252, 0.4); color: var(--accent-purple); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease;">
+            <span>🤝</span> Talk to Live Human Specialist
+          </button>
 
-      <!-- Quick Prompt Suggestions -->
-      <div class="prompt-chips">
-        <span class="chip-label">Perfume Queries:</span>
-        <button class="chip-btn" data-prompt="I need a warm smoky sandalwood fragrance for cold winter nights.">Smoky Mysore Sandalwood</button>
-        <button class="chip-btn" data-prompt="Suggest a fresh solar Malabar citrus fragrance for summer vacation.">Solar Malabar Citrus</button>
-        <button class="chip-btn chip-agent" data-prompt="Create a custom bespoke formula blend with Assam Oud, Sandalwood, and Saffron.">🤖 Create Custom Attar Blend</button>
-      </div>
-
-      <div class="prompt-chips" style="margin-top: -0.8rem">
-        <span class="chip-label">Order Support:</span>
-        <button class="chip-btn chip-support" data-prompt="When will my order be delivered?">📅 Delivery Date Inquiry</button>
-        <button class="chip-btn chip-support" data-prompt="Check status of order ORD-8821">📦 Track Order ORD-8821</button>
-        <button class="chip-btn chip-support" data-prompt="I want to place an order">🛍️ Guided Order Placement</button>
-        <button class="chip-btn chip-support" data-prompt="Place order for Royal Oud & Mysore Sandalwood">🛒 Quick Order Royal Oud</button>
-        <button class="chip-btn chip-support" data-prompt="Cancel order ORD-9430">❌ Cancel Order ORD-9430</button>
-        <button class="chip-btn chip-autogen" id="btn-chip-autogen">🏢 Run Multi-Agent AI Team</button>
-      </div>
-
-      <!-- Chat Interface -->
-      <div class="chat-wrapper">
-        <div id="chat-stream" class="chat-messages">
-          <div class="message msg-ai">
-            <div class="msg-avatar">AURA</div>
-            <div class="msg-bubble">
-              <p>Namaste! Welcome to AURA Royal Perfumery India. I am your Fragrance Sommelier & Order Support Assistant. Ask for perfume recommendations, track your order (e.g. ORD-8821), or place new orders.</p>
-            </div>
+          <div class="mode-toggle-container" style="background: rgba(20, 26, 40, 0.8); border: 1px solid rgba(255,255,255,0.12); padding: 0.4rem 0.9rem; border-radius: 25px;">
+            <label for="agent-mode-toggle" class="toggle-label" style="cursor: pointer; display: flex; align-items: center; gap: 0.6rem; margin: 0;">
+              <input type="checkbox" id="agent-mode-toggle">
+              <span class="toggle-slider"></span>
+              <span id="agent-mode-text" class="toggle-text" style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">
+                ⚡ Standard Sommelier Mode (Sub-3ms RAG)
+              </span>
+            </label>
           </div>
         </div>
+      </div>
 
-        <form id="chat-form" class="chat-input-area">
-          <input type="text" id="chat-input" placeholder="Type your perfume request or order ID (e.g. 'Track order ORD-8821' or 'Warm sandalwood fragrance')..." required />
-          <button type="submit" id="btn-send" class="btn-primary">
-            <span id="send-btn-label">Send Request</span>
+      <!-- User-Friendly Quick Action Shortcut Chips -->
+      <div style="background: rgba(15, 20, 32, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 1rem; margin-bottom: 1.2rem;">
+        <div style="font-size: 0.76rem; text-transform: uppercase; letter-spacing: 1px; color: var(--gold-primary); font-weight: 700; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>✨</span> Quick Task Shortcuts (Click any option to run instantly):
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+          <div class="prompt-chips" style="margin: 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="chip-label" style="font-weight: 700; color: var(--text-muted); font-size: 0.78rem;">🌸 Scent Discovery:</span>
+            <button class="chip-btn" data-prompt="I need a warm smoky sandalwood fragrance for cold winter nights.">🔥 Smoky Mysore Sandalwood</button>
+            <button class="chip-btn" data-prompt="Suggest a fresh solar Malabar citrus fragrance for summer vacation.">☀️ Solar Malabar Citrus</button>
+            <button class="chip-btn" data-prompt="Recommend an opulent Kannauj Damask rose floral perfume for evening.">🌹 Imperial Kannauj Rose</button>
+            <button class="chip-btn chip-agent" data-prompt="Create a custom bespoke formula blend with Assam Oud, Sandalwood, and Saffron.">🤖 Bespoke Attar Formula</button>
+          </div>
+
+          <div class="prompt-chips" style="margin: 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="chip-label" style="font-weight: 700; color: var(--text-muted); font-size: 0.78rem;">📦 Order OMS & Support:</span>
+            <button class="chip-btn chip-support" data-prompt="Check status of order ORD-8821">📦 Track Order ORD-8821</button>
+            <button class="chip-btn chip-support" data-prompt="When will my order be delivered?">🚚 Estimated Delivery Inquiry</button>
+            <button class="chip-btn chip-support" data-prompt="I want to place an order">🛍️ Guided Order Placement</button>
+            <button class="chip-btn chip-support" data-prompt="Place order for Royal Oud & Mysore Sandalwood">🛒 Quick Order Royal Oud</button>
+            <button class="chip-btn chip-support" data-prompt="Cancel order ORD-9430">❌ Cancel Order ORD-9430</button>
+            <button class="chip-btn chip-autogen" id="btn-chip-autogen">👑 Convene 4-Agent Committee</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Chat Interface Component -->
+      <div class="chat-wrapper" style="background: rgba(8, 11, 18, 0.95); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 14px; padding: 1.5rem; box-shadow: inset 0 0 30px rgba(0,0,0,0.6);">
+        
+        <!-- Live Chat Messages Stream -->
+        <div id="chat-stream" class="chat-messages" style="max-height: 500px; min-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 1.2rem; padding-right: 0.5rem;">
+          
+          <!-- Default AI Welcome Message -->
+          <div class="message msg-ai">
+            <div class="msg-avatar" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: 2px solid rgba(255,255,255,0.3); font-size: 0.78rem;">
+              AURA
+            </div>
+            <div class="msg-bubble" style="background: rgba(226, 192, 133, 0.06); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 12px; padding: 1.2rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-weight: 700; color: var(--gold-primary); font-family: var(--font-serif); font-size: 0.95rem;">
+                  Namaste! Welcome to AURA Royal Perfumery India 🌸
+                </span>
+                <span style="font-size: 0.7rem; color: var(--accent-green); font-family: var(--font-mono); font-weight: 600;">
+                  ● ONLINE & READY
+                </span>
+              </div>
+              
+              <p style="color: var(--text-main); font-size: 0.9rem; margin-bottom: 0.8rem; line-height: 1.5;">
+                I am your AI Olfactory Sommelier & Customer Support Assistant. How may I assist you today?
+              </p>
+
+              <!-- Interactive Welcome Quick Action Buttons -->
+              <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.8rem;">
+                <button class="welcome-action-btn" onclick="triggerQuickChat('Recommend a warm smoky sandalwood fragrance for winter')" style="background: rgba(226, 192, 133, 0.12); border: 1px solid var(--gold-primary); color: var(--gold-primary); padding: 0.35rem 0.8rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                  🌸 Recommend Fragrance
+                </button>
+                <button class="welcome-action-btn" onclick="triggerQuickChat('Check status of order ORD-8821')" style="background: rgba(56, 189, 248, 0.12); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 0.35rem 0.8rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                  📦 Track Order ORD-8821
+                </button>
+                <button class="welcome-action-btn" onclick="triggerQuickChat('I want to place an order')" style="background: rgba(52, 211, 153, 0.12); border: 1px solid var(--accent-green); color: var(--accent-green); padding: 0.35rem 0.8rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                  🛍️ Place New Order
+                </button>
+                <button class="welcome-action-btn" onclick="triggerQuickChat('Speak with a live human concierge specialist')" style="background: rgba(192, 132, 252, 0.12); border: 1px solid var(--accent-purple); color: var(--accent-purple); padding: 0.35rem 0.8rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                  🤝 Live Human Specialist
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Interactive Quick Order Operations Bar -->
+        <div style="display: flex; gap: 0.6rem; margin-top: 1rem; margin-bottom: 0.2rem; flex-wrap: wrap; align-items: center;" id="chat-quick-ops">
+          <span style="font-size: 0.75rem; color: var(--gold-primary); font-weight: 700; text-transform: uppercase; font-family: var(--font-mono); margin-right: 0.3rem;">Order Actions:</span>
+          <button type="button" id="btn-quick-place-order" style="background: rgba(52, 211, 153, 0.12); border: 1px solid var(--accent-green); color: var(--accent-green); padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s ease;">
+            🛍️ Instant Order Form
           </button>
+          <button type="button" id="btn-quick-track-orders" style="background: rgba(56, 189, 248, 0.12); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s ease;">
+            📦 Track Active Orders
+          </button>
+          <button type="button" id="btn-quick-cancel-order" style="background: rgba(248, 113, 113, 0.12); border: 1px solid var(--accent-danger); color: var(--accent-danger); padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s ease;">
+            ❌ Cancel an Order
+          </button>
+        </div>
+
+        <!-- Chat Input Form & Helper Bar -->
+        <form id="chat-form" class="chat-input-area" style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.4rem;">
+          <div style="display: flex; gap: 0.8rem; align-items: center;">
+            <div style="position: relative; flex-grow: 1;">
+              <input type="text" id="chat-input" placeholder="Type your request or order ID (e.g. 'Track order ORD-8821', 'Warm sandalwood perfume', or 'Place order')..." required style="width: 100%; background: rgba(15, 20, 32, 0.9); border: 1px solid rgba(226, 192, 133, 0.3); padding: 0.9rem 1.2rem; border-radius: 10px; color: var(--text-main); font-size: 0.92rem; outline: none; transition: all 0.2s ease;" />
+            </div>
+
+            <button type="submit" id="btn-send" class="btn-primary" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 700; padding: 0.9rem 1.6rem; border-radius: 10px; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; cursor: pointer; transition: all 0.2s ease;">
+              <span id="send-btn-label">✨ Send Request</span>
+            </button>
+          </div>
+
+          <!-- Bottom Pro-Tip Helper Bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); padding: 0 0.3rem;">
+            <span>💡 <strong>Pro-Tip:</strong> Type <code>ORD-8821</code> to track, <code>Place order</code> to buy, or toggle <strong>Autonomous Agent Mode</strong> for multi-step tool tasks.</span>
+            <span style="font-family: var(--font-mono); color: var(--gold-primary);">FDE Gateway v1.0</span>
+          </div>
         </form>
+
       </div>
     </section>
 
@@ -306,44 +393,150 @@
   </div>
 
   <!-- 2. OMS ORDERS & STOCK INVENTORY DATABASE MODAL -->
-  <div id="oms-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
-    <div style="background: #0A0D14; border: 1px solid rgba(226, 192, 133, 0.4); border-radius: 12px; width: 100%; max-width: 850px; max-height: 85vh; overflow-y: auto; padding: 1.8rem; box-shadow: 0 10px 40px rgba(0,0,0,0.8); font-family: var(--font-main); color: var(--text-main); position: relative;">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span style="font-size: 1.4rem;">📦</span>
+  <div id="oms-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(5, 7, 12, 0.88); backdrop-filter: blur(12px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: linear-gradient(145deg, #0B0F19 0%, #06080E 100%); border: 1px solid rgba(226, 192, 133, 0.35); border-radius: 16px; width: 95vw; max-width: 1400px; max-height: 92vh; overflow-y: auto; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 30px rgba(226, 192, 133, 0.1); font-family: var(--font-sans); color: var(--text-main); position: relative;">
+      
+      <!-- Modal Top Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1.2rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.9rem;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(226, 192, 133, 0.12); border: 1px solid rgba(226, 192, 133, 0.3); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--gold-primary);">
+            📦
+          </div>
           <div>
-            <h2 style="font-family: var(--font-title); color: var(--gold-primary); font-size: 1.2rem; margin: 0;">Order OMS & Relational Database Inspector</h2>
-            <div style="font-size: 0.78rem; color: var(--text-muted);">Real-Time Active Customer Orders & Atelier Inventory Stock Table</div>
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <h2 style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.35rem; font-weight: 600; margin: 0; letter-spacing: 0.5px;">Order OMS & Relational Database Inspector</h2>
+              <span class="oms-live-tag" style="background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.3); color: var(--accent-green); font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.6rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.4rem;">
+                <span class="pulse-dot" style="width: 6px; height: 6px;"></span> LIVE DB SYNC
+              </span>
+            </div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem;">
+              Real-Time Active Customer Orders & Atelier Inventory Stock Table
+            </div>
           </div>
         </div>
-        <button id="close-oms-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+
+        <div style="display: flex; align-items: center; gap: 0.8rem;">
+          <button id="btn-simulate-order" class="btn-oms-simulate" style="background: linear-gradient(135deg, rgba(226, 192, 133, 0.15), rgba(226, 192, 133, 0.05)); border: 1px solid var(--gold-primary); color: var(--gold-primary); padding: 0.45rem 0.9rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: all 0.2s ease;">
+            <span>✨</span> Simulate Test Order
+          </button>
+          <button id="btn-refresh-oms" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: var(--text-main); padding: 0.45rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: all 0.2s ease;">
+            <span id="oms-refresh-icon">🔄</span> Sync DB
+          </button>
+          <button id="close-oms-modal" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); width: 32px; height: 32px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">&times;</button>
+        </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+      <!-- Executive KPI Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="background: rgba(15, 20, 32, 0.6); border: 1px solid rgba(226, 192, 133, 0.2); border-radius: 12px; padding: 1rem; backdrop-filter: blur(8px);">
+          <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 0.3rem;">Active Orders</div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <div id="kpi-orders-count" style="font-size: 1.6rem; font-weight: 700; color: var(--gold-primary); font-family: var(--font-mono);">0</div>
+            <div id="kpi-orders-sub" style="font-size: 0.72rem; color: var(--text-muted);">0 Processing</div>
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 20, 32, 0.6); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 1rem; backdrop-filter: blur(8px);">
+          <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 0.3rem;">Catalog Inventory</div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <div id="kpi-stock-skus" style="font-size: 1.6rem; font-weight: 700; color: var(--accent-cyan); font-family: var(--font-mono);">0</div>
+            <div id="kpi-stock-units" style="font-size: 0.72rem; color: var(--text-muted);">0 total units</div>
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 20, 32, 0.6); border: 1px solid rgba(52, 211, 153, 0.2); border-radius: 12px; padding: 1rem; backdrop-filter: blur(8px);">
+          <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 0.3rem;">Stock Health State</div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <div id="kpi-stock-health" style="font-size: 1.1rem; font-weight: 700; color: var(--accent-green);">100% In Stock</div>
+            <div id="kpi-stock-alerts" style="font-size: 0.72rem; color: var(--text-muted);">0 Low Stock</div>
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 20, 32, 0.6); border: 1px solid rgba(192, 132, 252, 0.2); border-radius: 12px; padding: 1rem; backdrop-filter: blur(8px);">
+          <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 0.3rem;">Relational Query Latency</div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent-purple); font-family: var(--font-mono);">1.8 ms</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">SQL ACID Engine</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Search Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.2rem; flex-wrap: wrap;">
+        <div style="position: relative; flex: 1; min-width: 240px;">
+          <input id="oms-search-input" type="text" placeholder="🔍 Search Order ID, Product, Carrier, Status..." style="width: 100%; background: rgba(15, 20, 32, 0.8); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0.55rem 0.9rem; color: var(--text-main); font-size: 0.82rem; outline: none; transition: border-color 0.2s;">
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;" id="oms-view-tabs">
+          <button class="oms-tab-btn active" data-tab="all" style="background: rgba(226, 192, 133, 0.15); border: 1px solid var(--gold-primary); color: var(--gold-primary); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">All Tables</button>
+          <button class="oms-tab-btn" data-tab="orders" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.78rem; font-weight: 500; cursor: pointer;">📦 Orders Only</button>
+          <button class="oms-tab-btn" data-tab="stock" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.78rem; font-weight: 500; cursor: pointer;">🏭 Inventory Only</button>
+        </div>
+      </div>
+
+      <!-- Main Tables Grid Container -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(560px, 1fr)); gap: 1.5rem;" id="oms-tables-grid">
+        
         <!-- Live Orders Database Table -->
-        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(226, 192, 133, 0.2); border-radius: 8px; padding: 1.2rem;">
-          <h3 style="font-family: var(--font-mono); color: var(--gold-primary); font-size: 0.95rem; margin-bottom: 0.8rem;">📦 Active Customer Orders</h3>
-          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-            <table class="trace-table">
-              <thead><tr><th>Order ID</th><th>Perfume Name</th><th>Status</th><th>Tracking Number</th></tr></thead>
-              <tbody id="oms-orders-tbody"><tr><td colspan="4" class="text-center">Loading orders database...</td></tr></tbody>
+        <div id="oms-orders-panel" style="background: rgba(11, 15, 25, 0.85); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 12px; padding: 1.2rem; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <h3 style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.05rem; margin: 0; font-weight: 600;">📦 Active Customer Orders</h3>
+              <span id="oms-orders-badge-count" style="background: rgba(226, 192, 133, 0.15); color: var(--gold-primary); border: 1px solid rgba(226, 192, 133, 0.3); font-size: 0.72rem; padding: 0.1rem 0.5rem; border-radius: 10px; font-weight: 700;">0</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">TABLE: public.oms_orders</span>
+          </div>
+
+          <div class="table-responsive" style="max-height: 480px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+            <table class="trace-table" style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+              <thead>
+                <tr style="background: rgba(20, 26, 40, 0.9); text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.72rem; color: var(--text-muted); text-align: left;">
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 110px;">Order ID</th>
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 250px;">Perfume Item</th>
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 100px;">Total</th>
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 120px;">Status</th>
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 140px;">Tracking & Action</th>
+                </tr>
+              </thead>
+              <tbody id="oms-orders-tbody">
+                <tr><td colspan="5" class="text-center" style="padding: 1.5rem; color: var(--text-muted);">Loading orders database...</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
 
         <!-- Live Stock Inventory Table -->
-        <div style="background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 1.2rem;">
-          <h3 style="font-family: var(--font-mono); color: var(--accent-cyan); font-size: 0.95rem; margin-bottom: 0.8rem;">🏭 Atelier Stock Inventory</h3>
-          <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-            <table class="trace-table">
-              <thead><tr><th>Perfume Name</th><th>Price (₹)</th><th>Stock Count</th><th>State</th></tr></thead>
-              <tbody id="oms-stock-tbody"><tr><td colspan="4" class="text-center">Loading stock catalog...</td></tr></tbody>
+        <div id="oms-stock-panel" style="background: rgba(11, 15, 25, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 1.2rem; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <h3 style="font-family: var(--font-serif); color: var(--accent-cyan); font-size: 1.05rem; margin: 0; font-weight: 600;">🏭 Atelier Stock Inventory</h3>
+              <span id="oms-stock-badge-count" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.72rem; padding: 0.1rem 0.5rem; border-radius: 10px; font-weight: 700;">0</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">TABLE: public.inventory_stock</span>
+          </div>
+
+          <div class="table-responsive" style="max-height: 480px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+            <table class="trace-table" style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+              <thead>
+                <tr style="background: rgba(20, 26, 40, 0.9); text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.72rem; color: var(--text-muted); text-align: left;">
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 250px;">Fragrance Name</th>
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 100px;">Price (₹)</th>
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 150px;">Stock Meter</th>
+                  <th style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 110px;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="oms-stock-tbody">
+                <tr><td colspan="4" class="text-center" style="padding: 1.5rem; color: var(--text-muted);">Loading stock catalog...</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
+
       </div>
+
     </div>
   </div>
+
 
   <!-- 3. ROYAL PERFUMERY AI COMMITTEE MODAL (SIMPLE & HANDY FOR NAIVE USERS) -->
   <div id="autogen-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(10px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
@@ -354,9 +547,9 @@
         <div style="display: flex; align-items: center; gap: 0.8rem;">
           <span style="font-size: 1.8rem;">👑</span>
           <div>
-            <h2 style="font-family: var(--font-title); color: var(--gold-primary); font-size: 1.3rem; margin: 0;">Royal Perfumery Expert AI Committee</h2>
+            <h2 style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.3rem; margin: 0; font-weight: 600;">Royal Perfumery Multi-Agent Advisory Committee</h2>
             <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;">
-              4 specialized AI experts work together to formulate, check inventory stock, chemically balance, and safety-certify your custom fragrance.
+              4 Autonomous AI Specialists collaborate in a Microsoft AutoGen GroupChat to architect, personalize, inventory-check, and heritage-certify your bespoke fragrance.
             </div>
           </div>
         </div>
@@ -367,23 +560,23 @@
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
         <div style="background: rgba(226, 192, 133, 0.08); border: 1px solid rgba(226, 192, 133, 0.3); border-radius: 10px; padding: 1rem;">
           <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">🌸</div>
-          <div style="color: var(--gold-primary); font-weight: 700; font-size: 0.88rem;">1. Master Perfumer</div>
-          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Selects royal scent notes & accord profiles</div>
+          <div style="color: var(--gold-primary); font-weight: 700; font-size: 0.88rem;">1. Olfactory Sommelier</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Architects bespoke scent accords & note pyramids</div>
+        </div>
+        <div style="background: rgba(192, 132, 252, 0.08); border: 1px solid rgba(192, 132, 252, 0.3); border-radius: 10px; padding: 1rem;">
+          <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">💎</div>
+          <div style="color: var(--accent-purple); font-weight: 700; font-size: 0.88rem;">2. VIP Experience Concierge</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Personalizes crystal flacons, gold engraving & silk packaging</div>
         </div>
         <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 1rem;">
           <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">📦</div>
-          <div style="color: var(--accent-cyan); font-weight: 700; font-size: 0.88rem;">2. Inventory Manager</div>
-          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Checks atelier database for bottle availability</div>
+          <div style="color: var(--accent-cyan); font-weight: 700; font-size: 0.88rem;">3. Global Inventory Strategist</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Verifies vault stock & reserves priority express dispatch</div>
         </div>
         <div style="background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 10px; padding: 1rem;">
-          <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">🧪</div>
-          <div style="color: var(--accent-green); font-weight: 700; font-size: 0.88rem;">3. Perfume Chemist</div>
-          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Calculates exact ingredient mixing ratios</div>
-        </div>
-        <div style="background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 10px; padding: 1rem;">
-          <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">🛡️</div>
-          <div style="color: var(--accent-danger); font-weight: 700; font-size: 0.88rem;">4. Safety & IFRA Director</div>
-          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Certifies health safety & skin allergen limits</div>
+          <div style="font-size: 1.3rem; margin-bottom: 0.3rem;">👑</div>
+          <div style="color: var(--accent-green); font-weight: 700; font-size: 0.88rem;">4. Royal Heritage Officer</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">Authenticates GI Mysore/Assam origin & IFRA purity standards</div>
         </div>
       </div>
 
@@ -424,39 +617,71 @@
   </div>
 
   <!-- 4. RAG EVALS & RED-TEAMING AUDIT MODAL -->
-  <div id="evals-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
-    <div style="background: #0A0D14; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 12px; width: 100%; max-width: 850px; max-height: 85vh; overflow-y: auto; padding: 1.8rem; box-shadow: 0 10px 40px rgba(0,0,0,0.8); font-family: var(--font-main); color: var(--text-main); position: relative;">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span style="font-size: 1.4rem;">🛡️</span>
+  <div id="evals-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(5, 7, 12, 0.88); backdrop-filter: blur(12px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: linear-gradient(145deg, #0B0F19 0%, #06080E 100%); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 16px; width: 92vw; max-width: 1050px; max-height: 90vh; overflow-y: auto; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 30px rgba(56, 189, 248, 0.15); font-family: var(--font-sans); color: var(--text-main); position: relative;">
+      
+      <!-- Top Modal Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1.2rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.9rem;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--accent-cyan);">
+            🛡️
+          </div>
           <div>
-            <h2 style="font-family: var(--font-title); color: var(--accent-cyan); font-size: 1.2rem; margin: 0;">LLMOps Evals & Security Red-Teaming Inspector</h2>
-            <div style="font-size: 0.78rem; color: var(--text-muted);">Ragas Framework Benchmarks & Automated Vulnerability Audit</div>
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <h2 style="font-family: var(--font-serif); color: var(--accent-cyan); font-size: 1.35rem; font-weight: 600; margin: 0; letter-spacing: 0.5px;">LLMOps Evals & Security Red-Teaming Inspector</h2>
+              <span style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: var(--accent-cyan); font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.6rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.4rem;">
+                <span class="pulse-dot" style="width: 6px; height: 6px;"></span> RAGAS & ADVERSARIAL SUITE
+              </span>
+            </div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem;">
+              Automated Ragas Quality Benchmarks (Faithfulness, Relevance, Precision) & Security Vulnerability Audits
+            </div>
           </div>
         </div>
-        <button id="close-evals-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+
+        <button id="close-evals-modal" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); width: 32px; height: 32px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">&times;</button>
       </div>
 
-      <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-        <button id="btn-run-evals" class="btn-primary" style="flex: 1; background: linear-gradient(135deg, var(--accent-cyan), #0284C7); color: #fff;">
-          📊 Run RAG Evals Suite
+      <!-- Action Control Buttons -->
+      <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <button id="btn-run-evals" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.05)); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 0.75rem 1.2rem; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease;">
+          📊 Run RAG Quality Evals (Ragas Metrics)
         </button>
-        <button id="btn-run-redteam" class="btn-primary" style="flex: 1; background: linear-gradient(135deg, #EF4444, #B91C1C); color: #fff;">
-          🛡️ Run Security Red-Teaming Audit
+        <button id="btn-run-redteam" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(248, 113, 113, 0.05)); border: 1px solid var(--accent-danger); color: var(--accent-danger); padding: 0.75rem 1.2rem; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease;">
+          🛡️ Run Adversarial Security Red-Teaming
         </button>
       </div>
 
-      <div id="evals-results-box" class="react-steps-box hidden" style="max-height: 350px; overflow-y: auto; background: #0A0D14;">
-        <div id="evals-results-content"></div>
+      <!-- Results Box Output Area -->
+      <div id="evals-results-box" class="hidden" style="background: rgba(11, 15, 25, 0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; max-height: 480px; overflow-y: auto; box-shadow: inset 0 0 20px rgba(0,0,0,0.6);">
+        <div id="evals-results-content">
+          <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
+            Click one of the benchmark buttons above to run live automated evaluation suite!
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
 
   <!-- 5. FDE OPERATIONAL TELEMETRY DRAWER (SLIDE-OUT INSPECTOR) -->
   <div id="fde-drawer" class="fde-drawer">
     <div class="drawer-header">
-      <div class="drawer-title">
-        <span class="terminal-icon">⚡</span> FDE Operations & Telemetry Inspector
+      <div style="display: flex; align-items: center; gap: 0.9rem;">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--accent-cyan);">
+          ⚡
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div class="drawer-title">FDE Operations & Telemetry Inspector</div>
+            <span class="telemetry-live-tag" style="background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.3); color: var(--accent-green); font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.65rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.4rem;">
+              <span class="pulse-dot" style="width: 6px; height: 6px;"></span> OTLP SPAN TRACER
+            </span>
+          </div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem;">
+            Real-Time Enterprise Distributed Tracing, Latency Spans, Token Usage & Guardrail Audit Logs
+          </div>
+        </div>
       </div>
       <button id="close-drawer" class="btn-close" onclick="document.getElementById('fde-drawer').classList.remove('open')">&times;</button>
     </div>
@@ -466,11 +691,11 @@
       <div class="metrics-grid">
         <div class="metric-box">
           <span class="m-val" id="m-requests">0</span>
-          <span class="m-lbl">Total Requests</span>
+          <span class="m-lbl">Total API Requests</span>
         </div>
         <div class="metric-box">
           <span class="m-val" id="m-cache-rate">0%</span>
-          <span class="m-lbl">Cache Hit Rate</span>
+          <span class="m-lbl">Semantic Cache Hit Rate</span>
         </div>
         <div class="metric-box">
           <span class="m-val" id="m-tokens">0</span>
@@ -478,39 +703,233 @@
         </div>
         <div class="metric-box">
           <span class="m-val" id="m-cost">$0.00000</span>
-          <span class="m-lbl">Total Spend (USD)</span>
+          <span class="m-lbl">Est. Spend (USD)</span>
         </div>
       </div>
 
       <!-- Action Toolbar -->
-      <div class="drawer-actions">
-        <button id="btn-flush-cache" class="btn-sm btn-outline-warning">Flush Semantic Cache</button>
-        <span id="cache-status-msg" class="status-msg"></span>
+      <div class="drawer-actions" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: rgba(15, 20, 32, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 0.9rem 1.2rem; border-radius: 10px;">
+        <div style="display: flex; align-items: center; gap: 0.8rem;">
+          <button id="btn-flush-cache" class="btn-sm btn-outline-warning">🧹 Flush Semantic Cache</button>
+          <span id="cache-status-msg" class="status-msg" style="font-size: 0.82rem; color: var(--accent-green); font-weight: 600;"></span>
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono);">
+          EXPORTER: OpenTelemetry (OTLP / Jaeger API)
+        </div>
       </div>
 
       <!-- Telemetry Trace Log Table -->
       <div class="trace-section">
-        <h3>Real-Time Request Spans & Audit Logs</h3>
-        <div class="table-responsive">
-          <table class="trace-table">
+        <h3 style="font-family: var(--font-serif); font-size: 1.15rem; color: var(--gold-primary); margin-bottom: 1rem; font-weight: 600;">Real-Time Request Spans & Audit Logs</h3>
+        <div class="table-responsive" style="max-height: 520px; overflow-y: auto; overflow-x: auto; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
+          <table class="trace-table" style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr>
-                <th>Time / Trace ID</th>
-                <th>Provider / Model</th>
-                <th>Cache</th>
-                <th>Latency</th>
-                <th>Tokens & Cost</th>
-                <th>Guardrails / PII</th>
+                <th style="min-width: 160px;">Time & Trace ID</th>
+                <th style="min-width: 240px;">Provider & Model Route</th>
+                <th style="min-width: 120px;">Cache State</th>
+                <th style="min-width: 110px;">Latency</th>
+                <th style="min-width: 140px;">Tokens & Spend</th>
+                <th style="min-width: 150px;">Guardrails & Security</th>
               </tr>
             </thead>
             <tbody id="trace-tbody">
               <tr>
-                <td colspan="6" class="text-center">No trace data collected yet. Send a request in the assistant!</td>
+                <td colspan="6" class="text-center" style="padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">No trace data collected yet. Send a request in the assistant!</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+    </div>
+  <!-- 6. HUMAN-IN-THE-LOOP (HITL) LIVE CONCIERGE HANDOFF MODAL -->
+  <div id="hitl-modal" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(5, 7, 12, 0.88); backdrop-filter: blur(12px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: linear-gradient(145deg, #0B0F19 0%, #06080E 100%); border: 1px solid rgba(192, 132, 252, 0.4); border-radius: 16px; width: 92vw; max-width: 750px; max-height: 88vh; overflow-y: auto; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 30px rgba(192, 132, 252, 0.15); font-family: var(--font-sans); color: var(--text-main); position: relative;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1.2rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.9rem;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(192, 132, 252, 0.12); border: 1px solid rgba(192, 132, 252, 0.3); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--accent-purple);">
+            🤝
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <h2 style="font-family: var(--font-serif); color: var(--accent-purple); font-size: 1.3rem; font-weight: 600; margin: 0;">Live Human Concierge Desk</h2>
+              <span style="background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.3); color: var(--accent-green); font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.6rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.4rem;">
+                <span class="pulse-dot" style="width: 6px; height: 6px;"></span> LIVE HANDOFF ACTIVE
+              </span>
+            </div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem;">
+              Human-in-the-Loop (HITL) Handoff for VIP Gifting & Custom Atelier Escalations
+            </div>
+          </div>
+        </div>
+        <button id="close-hitl-modal" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); width: 32px; height: 32px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">&times;</button>
+      </div>
+
+      <!-- Agent Profile Card -->
+      <div style="background: rgba(15, 20, 32, 0.7); border: 1px solid rgba(192, 132, 252, 0.25); border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--gold-primary), var(--accent-purple)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: #000;">
+          VS
+        </div>
+        <div style="flex-grow: 1;">
+          <div style="font-family: var(--font-serif); font-size: 1.05rem; font-weight: 700; color: var(--gold-primary);">
+            Senior Atelier Master Vikramaditya Sharma
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">
+            Senior Human Fragrance Specialist & VIP Corporate Concierge
+          </div>
+          <div style="font-size: 0.72rem; color: var(--accent-green); margin-top: 0.2rem; font-family: var(--font-mono);">
+            ● Handoff Ticket: <span id="hitl-ticket-id">TICKET-HUMAN-8819</span> | Context Transferred: 100%
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Chat Box -->
+      <div id="hitl-chat-stream" style="background: rgba(10, 13, 20, 0.9); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 1.2rem; max-height: 300px; min-height: 180px; overflow-y: auto; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.8rem;">
+        <div style="background: rgba(192, 132, 252, 0.08); border-left: 3px solid var(--accent-purple); padding: 0.8rem 1rem; border-radius: 6px;">
+          <div style="font-weight: 700; color: var(--accent-purple); font-size: 0.85rem; margin-bottom: 0.3rem;">
+            👤 Vikramaditya Sharma (Senior Atelier Specialist)
+          </div>
+          <div id="hitl-welcome-msg" style="font-size: 0.85rem; line-height: 1.5;">
+            Namaste! I am Vikramaditya Sharma. I have received your session context and I am ready to personally assist you with VIP corporate gifting or bespoke atelier requests.
+          </div>
+        </div>
+      </div>
+
+      <form id="hitl-form" style="display: flex; gap: 0.8rem;">
+        <input id="hitl-input" type="text" placeholder="Type your message to Senior Specialist Vikramaditya Sharma..." required style="flex-grow: 1; background: rgba(15, 20, 32, 0.9); border: 1px solid rgba(192, 132, 252, 0.3); border-radius: 8px; padding: 0.75rem 1rem; color: var(--text-main); font-size: 0.9rem; outline: none;">
+        <button type="submit" style="background: var(--accent-purple); color: #000; font-weight: 700; border: none; padding: 0.75rem 1.4rem; border-radius: 8px; cursor: pointer;">
+          Send Message
+        </button>
+      </form>
+
+    </div>
+  <!-- 7. INSTANT 1-CLICK PLACE ORDER MODAL -->
+  <div id="modal-place-order" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(5, 7, 12, 0.88); backdrop-filter: blur(12px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: linear-gradient(145deg, #0B0F19 0%, #06080E 100%); border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 16px; width: 92vw; max-width: 850px; max-height: 88vh; overflow-y: auto; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.9); font-family: var(--font-sans); color: var(--text-main); position: relative;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.8rem;">
+          <span style="font-size: 1.6rem;">🛍️</span>
+          <div>
+            <h3 style="font-family: var(--font-serif); color: var(--accent-green); font-size: 1.25rem; margin: 0; font-weight: 600;">Instant Retail Fragrance Order Catalog</h3>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">Select your fragrance, adjust quantity with - and +, then click 1-Click Buy to place your order!</div>
+          </div>
+        </div>
+        <button id="close-place-order-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <!-- Retail Product Cards Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+        
+        <div class="rec-card" style="background: rgba(15, 20, 32, 0.95); border: 1px solid rgba(226, 192, 133, 0.35); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.05rem; font-weight: 700; margin-bottom: 0.2rem;">Imperial Kannauj Rose & Suede</div>
+            <div style="font-size: 0.92rem; color: #FFF; font-weight: 700; margin-bottom: 0.4rem;">₹19,500 <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: normal;">• Floral Luxury</span></div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">🌸 Kannauj Rose, Lychee</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem; margin-top: 0.4rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Quantity:</span>
+              <div style="display: flex; align-items: center; gap: 0.6rem; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 0.2rem 0.6rem;">
+                <button type="button" onclick="changeCardQty(this, -1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">-</button>
+                <span class="card-qty-val" style="font-size: 0.88rem; font-weight: 700; font-family: var(--font-mono); color: #fff;">1</span>
+                <button type="button" onclick="changeCardQty(this, 1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">+</button>
+              </div>
+            </div>
+            <button class="btn-order-instant" data-perfume="Imperial Kannauj Rose & Suede" onclick="document.getElementById('modal-place-order').classList.add('hidden')" style="width: 100%; background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: none; padding: 0.65rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">
+              🛒 1-Click Buy (₹19,500)
+            </button>
+          </div>
+        </div>
+
+        <div class="rec-card" style="background: rgba(15, 20, 32, 0.95); border: 1px solid rgba(226, 192, 133, 0.35); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.05rem; font-weight: 700; margin-bottom: 0.2rem;">Monsoon Vetiver & Rain Mint</div>
+            <div style="font-size: 0.92rem; color: #FFF; font-weight: 700; margin-bottom: 0.4rem;">₹16,000 <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: normal;">• Fresh Earthy</span></div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">🌸 Earthy Khus Vetiver, Wild Mint</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem; margin-top: 0.4rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Quantity:</span>
+              <div style="display: flex; align-items: center; gap: 0.6rem; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 0.2rem 0.6rem;">
+                <button type="button" onclick="changeCardQty(this, -1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">-</button>
+                <span class="card-qty-val" style="font-size: 0.88rem; font-weight: 700; font-family: var(--font-mono); color: #fff;">1</span>
+                <button type="button" onclick="changeCardQty(this, 1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">+</button>
+              </div>
+            </div>
+            <button class="btn-order-instant" data-perfume="Monsoon Vetiver & Rain Mint" onclick="document.getElementById('modal-place-order').classList.add('hidden')" style="width: 100%; background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: none; padding: 0.65rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">
+              🛒 1-Click Buy (₹16,000)
+            </button>
+          </div>
+        </div>
+
+        <div class="rec-card" style="background: rgba(15, 20, 32, 0.95); border: 1px solid rgba(226, 192, 133, 0.35); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.05rem; font-weight: 700; margin-bottom: 0.2rem;">Solar Malabar Citrus & Vetiver</div>
+            <div style="font-size: 0.92rem; color: #FFF; font-weight: 700; margin-bottom: 0.4rem;">₹14,500 <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: normal;">• Citrus Fresh</span></div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">🌸 Malabar Lemon Zest, Calabrian Bergamot</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem; margin-top: 0.4rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Quantity:</span>
+              <div style="display: flex; align-items: center; gap: 0.6rem; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 0.2rem 0.6rem;">
+                <button type="button" onclick="changeCardQty(this, -1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">-</button>
+                <span class="card-qty-val" style="font-size: 0.88rem; font-weight: 700; font-family: var(--font-mono); color: #fff;">1</span>
+                <button type="button" onclick="changeCardQty(this, 1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">+</button>
+              </div>
+            </div>
+            <button class="btn-order-instant" data-perfume="Solar Malabar Citrus & Vetiver" onclick="document.getElementById('modal-place-order').classList.add('hidden')" style="width: 100%; background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: none; padding: 0.65rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">
+              🛒 1-Click Buy (₹14,500)
+            </button>
+          </div>
+        </div>
+
+        <div class="rec-card" style="background: rgba(15, 20, 32, 0.95); border: 1px solid rgba(226, 192, 133, 0.35); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.05rem; font-weight: 700; margin-bottom: 0.2rem;">Royal Oud & Mysore Sandalwood</div>
+            <div style="font-size: 0.92rem; color: #FFF; font-weight: 700; margin-bottom: 0.4rem;">₹18,500 <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: normal;">• Royal Woody Oriental</span></div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">🌸 Assam Oud, Kashmir Cardamom</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem; margin-top: 0.4rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Quantity:</span>
+              <div style="display: flex; align-items: center; gap: 0.6rem; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 0.2rem 0.6rem;">
+                <button type="button" onclick="changeCardQty(this, -1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">-</button>
+                <span class="card-qty-val" style="font-size: 0.88rem; font-weight: 700; font-family: var(--font-mono); color: #fff;">1</span>
+                <button type="button" onclick="changeCardQty(this, 1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">+</button>
+              </div>
+            </div>
+            <button class="btn-order-instant" data-perfume="Royal Oud & Mysore Sandalwood" onclick="document.getElementById('modal-place-order').classList.add('hidden')" style="width: 100%; background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: none; padding: 0.65rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">
+              🛒 1-Click Buy (₹18,500)
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 8. INSTANT 1-CLICK CANCEL ORDER MODAL -->
+  <div id="modal-cancel-order" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(5, 7, 12, 0.88); backdrop-filter: blur(12px); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 1.5rem;">
+    <div style="background: linear-gradient(145deg, #0B0F19 0%, #06080E 100%); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 16px; width: 92vw; max-width: 600px; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.9); font-family: var(--font-sans); color: var(--text-main); position: relative;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.8rem;">
+          <span style="font-size: 1.6rem;">❌</span>
+          <div>
+            <h3 style="font-family: var(--font-serif); color: var(--accent-danger); font-size: 1.25rem; margin: 0; font-weight: 600;">Cancel & Refund Order</h3>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">Relational Database Order Cancellation & Inventory Stock Restoration</div>
+          </div>
+        </div>
+        <button id="close-cancel-order-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div id="cancel-orders-list-container" style="display: flex; flex-direction: column; gap: 0.8rem; max-height: 320px; overflow-y: auto;">
+        <div style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading active customer orders...</div>
+      </div>
+
     </div>
   </div>
 

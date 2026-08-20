@@ -684,20 +684,22 @@ body {
   display: none !important;
 }
 
-/* FDE Slide-Out Drawer */
+/* FDE Slide-Out Telemetry Inspector Drawer (Ultra-Wide Executive Canvas) */
 .fde-drawer {
   position: fixed;
   top: 0;
-  right: -600px;
-  width: 600px;
+  right: -1300px;
+  width: 90vw;
+  max-width: 1200px;
   height: 100vh;
-  background: #0D1117;
+  background: linear-gradient(145deg, #090C14 0%, #05070B 100%);
   border-left: 2px solid var(--gold-primary);
   z-index: 9999 !important;
-  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.9);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(226, 192, 133, 0.15);
   transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(16px);
 }
 
 .fde-drawer.open {
@@ -705,102 +707,133 @@ body {
 }
 
 .drawer-header {
-  padding: 1.2rem 1.5rem;
-  background: rgba(226, 192, 133, 0.08);
-  border-bottom: 1px solid var(--bg-card-border);
+  padding: 1.4rem 2rem;
+  background: linear-gradient(135deg, rgba(13, 17, 23, 0.95), rgba(20, 26, 40, 0.95));
+  border-bottom: 1px solid rgba(226, 192, 133, 0.3);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .drawer-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
   color: var(--gold-primary);
-  font-weight: 700;
-  font-size: 1rem;
+  font-weight: 600;
+  font-size: 1.35rem;
+  letter-spacing: 0.5px;
 }
 
 .btn-close {
-  background: none;
-  border: none;
-  color: var(--gold-primary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
   font-size: 1.8rem;
   cursor: pointer;
   line-height: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+  background: rgba(248, 113, 113, 0.2);
+  color: var(--accent-danger);
+  border-color: rgba(248, 113, 113, 0.4);
 }
 
 .drawer-content {
-  padding: 1.5rem;
+  padding: 2rem;
   overflow-y: auto;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.8rem;
 }
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.2rem;
 }
 
 .metric-box {
-  background: rgba(20, 25, 38, 0.8);
+  background: rgba(15, 20, 32, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 1rem;
-  border-radius: 8px;
+  padding: 1.2rem;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.metric-box:hover {
+  border-color: rgba(226, 192, 133, 0.3);
+  transform: translateY(-2px);
 }
 
 .m-val {
   font-family: var(--font-mono);
-  font-size: 1.2rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--accent-cyan);
 }
 
 .m-lbl {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 0.3rem;
 }
 
 .btn-sm {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem;
-  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn-outline-warning {
   border: 1px solid var(--gold-primary);
-  background: transparent;
+  background: rgba(226, 192, 133, 0.1);
   color: var(--gold-primary);
 }
 
 .btn-outline-warning:hover {
   background: var(--gold-primary);
   color: var(--bg-dark);
+  box-shadow: 0 0 12px rgba(226, 192, 133, 0.4);
 }
 
 .trace-table {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
 }
 
 .trace-table th {
   text-align: left;
-  padding: 0.6rem;
+  padding: 0.9rem 1rem;
   color: var(--text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(20, 26, 40, 0.95);
 }
 
 .trace-table td {
-  padding: 0.6rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .footer {
@@ -946,3 +979,155 @@ body {
   from { stroke-dashoffset: 28; }
   to { stroke-dashoffset: 0; }
 }
+
+/* ==========================================================================
+   Order OMS & Atelier Stock Inventory Inspector - Luxury UI Styles
+   ========================================================================== */
+
+.oms-order-id {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--gold-primary);
+  background: rgba(226, 192, 133, 0.1);
+  border: 1px solid rgba(226, 192, 133, 0.25);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  display: inline-block;
+}
+
+.oms-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+
+.oms-status-pill.processing {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #FBBF24;
+}
+
+.oms-status-pill.shipped {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: var(--accent-cyan);
+}
+
+.oms-status-pill.delivered {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: var(--accent-green);
+}
+
+.oms-status-pill.cancelled {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: var(--accent-danger);
+}
+
+.oms-stock-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+}
+
+.oms-stock-tag.in {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: var(--accent-green);
+}
+
+.oms-stock-tag.low {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #FBBF24;
+}
+
+.oms-stock-tag.out {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: var(--accent-danger);
+}
+
+.stock-meter-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.stock-meter-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.stock-meter-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.4s ease;
+}
+
+.stock-meter-fill.high {
+  background: linear-gradient(90deg, #34D399, #10B981);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+}
+
+.stock-meter-fill.medium {
+  background: linear-gradient(90deg, #FBBF24, #F59E0B);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+}
+
+.stock-meter-fill.critical {
+  background: linear-gradient(90deg, #F87171, #EF4444);
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
+}
+
+.btn-cancel-order-inline {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: var(--accent-danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel-order-inline:hover {
+  background: var(--accent-danger);
+  color: #FFFFFF;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
+}
+
+.btn-oms-simulate:hover {
+  background: var(--gold-primary) !important;
+  color: var(--bg-dark) !important;
+  box-shadow: 0 0 12px rgba(226, 192, 133, 0.4);
+}
+
+#oms-search-input:focus {
+  border-color: var(--gold-primary) !important;
+  box-shadow: 0 0 8px rgba(226, 192, 133, 0.25);
+}
+
+.oms-table-row {
+  transition: background 0.15s ease;
+}
+
+.oms-table-row:hover {
+  background: rgba(226, 192, 133, 0.04) !important;
+}
+

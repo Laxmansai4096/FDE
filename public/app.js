@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Evals & Redteam Elements
   const btnRunEvals = document.getElementById('btn-run-evals');
   const btnRunRedteam = document.getElementById('btn-run-redteam');
-  const evalsOutputBox = document.getElementById('evals-output-box');
-  const evalsTraceContent = document.getElementById('evals-trace-content');
+  const evalsOutputBox = document.getElementById('evals-results-box');
+  const evalsTraceContent = document.getElementById('evals-results-content');
 
   // Telemetry Metric Elements
   const mRequests = document.getElementById('m-requests');
@@ -77,15 +77,525 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(fetchTelemetry, 3000); // Polling Telemetry metrics
 
   // Mode Toggle Switch Listener
+  // Global 1-Click Quick Chat Trigger Handler for Naive Users
+  window.triggerQuickChat = function(promptText) {
+    if (!promptText || !chatInput || !chatForm) return;
+    chatInput.value = promptText;
+    
+    // Auto-enable Agent mode if prompt involves custom formula creation or order placement
+    if (promptText.toLowerCase().includes('custom') || promptText.toLowerCase().includes('bespoke')) {
+      if (agentModeToggle) {
+        agentModeToggle.checked = true;
+        if (sendBtnLabel) sendBtnLabel.textContent = "🤖 Run Autonomous Agent";
+        const agentModeText = document.getElementById('agent-mode-text');
+        if (agentModeText) agentModeText.textContent = "🤖 ReAct Agent Mode (Tool Calling Enabled)";
+      }
+    }
+    chatForm.dispatchEvent(new Event('submit'));
+  };
+
+  // Agent Mode Toggle Listener with Text Updates
+  const agentModeText = document.getElementById('agent-mode-text');
   if (agentModeToggle) {
     agentModeToggle.addEventListener('change', () => {
       if (agentModeToggle.checked) {
-        sendBtnLabel.textContent = "🤖 Run Autonomous Agent";
+        if (sendBtnLabel) sendBtnLabel.textContent = "🤖 Run Autonomous Agent";
+        if (agentModeText) agentModeText.textContent = "🤖 ReAct Agent Mode (Tool Calling Enabled)";
       } else {
-        sendBtnLabel.textContent = "Send Request";
+        if (sendBtnLabel) sendBtnLabel.textContent = "✨ Send Request";
+        if (agentModeText) agentModeText.textContent = "⚡ Standard Sommelier Mode (Sub-3ms RAG)";
       }
     });
   }
+
+  // Human-in-the-Loop (HITL) Handoff Modal Elements
+  const btnHumanEscalate = document.getElementById('btn-human-escalate');
+  const hitlModal = document.getElementById('hitl-modal');
+  const closeHitlModal = document.getElementById('close-hitl-modal');
+  const hitlForm = document.getElementById('hitl-form');
+  const hitlInput = document.getElementById('hitl-input');
+  const hitlChatStream = document.getElementById('hitl-chat-stream');
+  const hitlTicketId = document.getElementById('hitl-ticket-id');
+
+  if (btnHumanEscalate && hitlModal) {
+    btnHumanEscalate.addEventListener('click', async () => {
+      hitlModal.classList.remove('hidden');
+      const ticketNum = Math.floor(1000 + Math.random() * 9000);
+      if (hitlTicketId) hitlTicketId.textContent = `TICKET-HUMAN-${ticketNum}`;
+
+      try {
+        const res = await fetch('/api/hitl/escalate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: "Customer requested live human specialist handoff", context: "AI Olfactory Concierge Session" })
+        });
+        const data = await res.json();
+        if (data.ticketId && hitlTicketId) hitlTicketId.textContent = data.ticketId;
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  if (closeHitlModal && hitlModal) {
+    closeHitlModal.addEventListener('click', () => {
+      hitlModal.classList.add('hidden');
+    });
+  }
+
+  if (hitlForm && hitlChatStream && hitlInput) {
+    hitlForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = hitlInput.value.trim();
+      if (!text) return;
+
+      const userDiv = document.createElement('div');
+      userDiv.style.cssText = "background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 0.7rem 0.9rem; border-radius: 6px; font-size: 0.85rem;";
+      userDiv.innerHTML = `<strong style="color: var(--gold-primary)">You:</strong> ${escapeHtml(text)}`;
+      hitlChatStream.appendChild(userDiv);
+      hitlInput.value = '';
+      hitlChatStream.scrollTop = hitlChatStream.scrollHeight;
+
+      setTimeout(() => {
+        const specialistDiv = document.createElement('div');
+        specialistDiv.style.cssText = "background: rgba(192, 132, 252, 0.08); border-left: 3px solid var(--accent-purple); padding: 0.8rem 1rem; border-radius: 6px; font-size: 0.85rem;";
+        specialistDiv.innerHTML = `
+          <div style="font-weight: 700; color: var(--accent-purple); font-size: 0.82rem; margin-bottom: 0.2rem;">👤 Vikramaditya Sharma (Senior Specialist)</div>
+          <div>Thank you for your message regarding <em>"${escapeHtml(text)}"</em>. I am processing your bespoke request directly with our Jaipur Master Distiller. I will reserve your private batch slot immediately!</div>
+        `;
+        hitlChatStream.appendChild(specialistDiv);
+        hitlChatStream.scrollTop = hitlChatStream.scrollHeight;
+      }, 900);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // INTERACTIVE QUICK ORDER OPERATIONS (PLACE, TRACK, CANCEL) HANDLERS
+  // ---------------------------------------------------------------------------
+  const btnQuickPlaceOrder = document.getElementById('btn-quick-place-order');
+  const btnQuickTrackOrders = document.getElementById('btn-quick-track-orders');
+  const btnQuickCancelOrder = document.getElementById('btn-quick-cancel-order');
+
+  const modalPlaceOrder = document.getElementById('modal-place-order');
+  const closePlaceOrderModal = document.getElementById('close-place-order-modal');
+  const formInstantOrder = document.getElementById('form-instant-order');
+
+  const modalCancelOrder = document.getElementById('modal-cancel-order');
+  const closeCancelOrderModal = document.getElementById('close-cancel-order-modal');
+  const cancelOrdersListContainer = document.getElementById('cancel-orders-list-container');
+
+  // 1. Instant Place Order Catalog Generator & Modal Trigger
+  function renderInstantOrderCatalogInChat() {
+    const aiMsgId = 'msg-' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'message msg-ai';
+    div.id = aiMsgId;
+
+    const products = [
+      { name: "Imperial Kannauj Rose & Suede", price: "₹19,500", family: "Floral Luxury", notes: "Kannauj Rose, Lychee" },
+      { name: "Monsoon Vetiver & Rain Mint", price: "₹16,000", family: "Fresh Earthy", notes: "Earthy Khus Vetiver, Wild Mint" },
+      { name: "Solar Malabar Citrus & Vetiver", price: "₹14,500", family: "Citrus Fresh", notes: "Malabar Lemon Zest, Calabrian Bergamot" },
+      { name: "Royal Oud & Mysore Sandalwood", price: "₹18,500", family: "Royal Woody Oriental", notes: "Assam Oud, Kashmir Cardamom" },
+      { name: "Royal Kashmir Saffron & Amber", price: "₹21,000", family: "Gourmand Oriental", notes: "Kashmir Saffron, Bourbon Vanilla" },
+      { name: "Smoked Cardamom & Incense", price: "₹22,500", family: "Spicy Amber", notes: "Kerala Black Cardamom, Temple Incense" }
+    ];
+
+    let cardsHtml = `<div class="rec-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.9rem; margin-top: 1rem;">`;
+    
+    products.forEach(p => {
+      cardsHtml += `
+        <div class="rec-card" style="background: rgba(15, 20, 32, 0.95); border: 1px solid rgba(226, 192, 133, 0.35); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 6px 20px rgba(0,0,0,0.5);">
+          <div>
+            <div style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.05rem; font-weight: 700; margin-bottom: 0.2rem;">
+              ${escapeHtml(p.name)}
+            </div>
+            <div style="font-size: 0.92rem; color: #FFF; font-weight: 700; margin-bottom: 0.4rem;">
+              ${p.price} <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: normal;">• ${escapeHtml(p.family)}</span>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">
+              🌸 ${escapeHtml(p.notes)}
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem; margin-top: 0.4rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Quantity:</span>
+              <div style="display: flex; align-items: center; gap: 0.6rem; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 0.2rem 0.6rem;">
+                <button type="button" onclick="changeCardQty(this, -1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">-</button>
+                <span class="card-qty-val" style="font-size: 0.88rem; font-weight: 700; font-family: var(--font-mono); color: #fff;">1</span>
+                <button type="button" onclick="changeCardQty(this, 1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 1rem; line-height: 1;">+</button>
+              </div>
+            </div>
+
+            <button class="btn-order-instant" data-perfume="${escapeHtml(p.name)}" style="width: 100%; background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: none; padding: 0.65rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; transition: all 0.2s ease;">
+              🛒 1-Click Buy (${p.price})
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    cardsHtml += `</div>`;
+
+    div.innerHTML = `
+      <div class="msg-avatar" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: 2px solid rgba(255,255,255,0.3); font-size: 0.78rem;">AURA</div>
+      <div class="msg-bubble" style="background: rgba(226, 192, 133, 0.06); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 12px; padding: 1.2rem;">
+        <div style="font-weight: 700; color: var(--gold-primary); font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 0.4rem;">
+          🛍️ AURA Atelier Instant Order Catalog
+        </div>
+        <p style="color: var(--text-main); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.5;">
+          Select your desired royal fragrance below, adjust quantity with <strong>-</strong> and <strong>+</strong>, and click <strong>1-Click Buy</strong> to confirm instant order & dispatch!
+        </p>
+        ${cardsHtml}
+      </div>
+    `;
+
+    if (chatStream) {
+      chatStream.appendChild(div);
+      chatStream.scrollTop = chatStream.scrollHeight;
+    }
+  }
+
+  if (btnQuickPlaceOrder) {
+    btnQuickPlaceOrder.addEventListener('click', () => {
+      if (modalPlaceOrder) modalPlaceOrder.classList.remove('hidden');
+      renderInstantOrderCatalogInChat();
+    });
+  }
+
+  if (closePlaceOrderModal && modalPlaceOrder) {
+    closePlaceOrderModal.addEventListener('click', () => {
+      modalPlaceOrder.classList.add('hidden');
+    });
+  }
+
+  if (formInstantOrder) {
+    formInstantOrder.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const product = document.getElementById('select-order-product').value;
+      const size = document.getElementById('select-order-size').value;
+      const qty = document.getElementById('input-order-qty').value;
+
+      modalPlaceOrder.classList.add('hidden');
+      
+      if (agentModeToggle) {
+        agentModeToggle.checked = true;
+        if (sendBtnLabel) sendBtnLabel.textContent = "🤖 Run Autonomous Agent";
+        if (agentModeText) agentModeText.textContent = "🤖 ReAct Agent Mode (Tool Calling Enabled)";
+      }
+
+      window.triggerQuickChat(`Place order for ${qty} x ${product} (${size})`);
+    });
+  }
+
+  // 2. Instant Track Active Orders (Renders All Active Orders in Database)
+  async function renderActiveOrdersTrackerInChat() {
+    const aiMsgId = 'msg-' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'message msg-ai';
+    div.id = aiMsgId;
+
+    try {
+      const res = await fetch('/api/orders');
+      const orders = await res.json();
+
+      if (!orders || orders.length === 0) {
+        div.innerHTML = `
+          <div class="msg-avatar" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: 2px solid rgba(255,255,255,0.3); font-size: 0.78rem;">AURA</div>
+          <div class="msg-bubble" style="background: rgba(226, 192, 133, 0.06); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 12px; padding: 1.2rem;">
+            <div style="font-weight: 700; color: var(--gold-primary); font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 0.4rem;">
+              📦 Active Orders Tracker
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">No active customer orders found in the database.</p>
+          </div>
+        `;
+        if (chatStream) {
+          chatStream.appendChild(div);
+          chatStream.scrollTop = chatStream.scrollHeight;
+        }
+        return;
+      }
+
+      let cardsHtml = `<div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem;">`;
+
+      orders.forEach(o => {
+        let statusColor = 'var(--accent-cyan)';
+        let statusIcon = '⚙️';
+        let statusLabel = 'PROCESSING IN VAULT';
+        
+        if (o.status === 'SHIPPED') {
+          statusColor = 'var(--accent-green)';
+          statusIcon = '🚚';
+          statusLabel = 'SHIPPED IN TRANSIT';
+        } else if (o.status === 'DELIVERED') {
+          statusColor = 'var(--gold-primary)';
+          statusIcon = '✨';
+          statusLabel = 'DELIVERED TO VIP RESIDENCE';
+        } else if (o.status === 'CANCELLED') {
+          statusColor = 'var(--accent-danger)';
+          statusIcon = '❌';
+          statusLabel = 'CANCELLED & REFUNDED';
+        }
+
+        cardsHtml += `
+          <div style="background: rgba(15, 20, 32, 0.95); border: 1px solid rgba(226, 192, 133, 0.3); border-radius: 12px; padding: 1.1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.4); flex-wrap: wrap; gap: 0.8rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--gold-primary); font-size: 0.98rem;">${escapeHtml(o.orderId)}</span>
+                <span style="background: rgba(255,255,255,0.06); color: ${statusColor}; border: 1px solid ${statusColor}; font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 4px;">
+                  ${statusIcon} ${statusLabel}
+                </span>
+              </div>
+              <div style="font-size: 0.95rem; color: #FFF; font-weight: 700;">${escapeHtml(o.productName)} (${escapeHtml(o.size)}) x ${o.quantity || 1}</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.5;">
+                • Price: <strong style="color:var(--gold-primary);">${escapeHtml(o.priceInRupees || '$' + o.totalPrice)}</strong><br>
+                • Carrier: <strong>${escapeHtml(o.carrier)}</strong> • Tracking: <code>${escapeHtml(o.trackingNumber)}</code><br>
+                • Estimated Delivery: <strong>${new Date(o.estimatedDelivery).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</strong>
+              </div>
+            </div>
+
+            <div>
+              ${o.status === 'PROCESSING' ? `
+                <button type="button" onclick="cancelOrderFromModal('${escapeHtml(o.orderId)}')" style="background: rgba(248, 113, 113, 0.15); border: 1px solid var(--accent-danger); color: var(--accent-danger); font-weight: 700; padding: 0.5rem 0.9rem; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: all 0.2s ease;">
+                  ❌ Cancel Order
+                </button>
+              ` : `
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 0.4rem 0.8rem; border-radius: 6px;">
+                  ${statusIcon} ${escapeHtml(o.carrier)}
+                </span>
+              `}
+            </div>
+          </div>
+        `;
+      });
+
+      cardsHtml += `</div>`;
+
+      div.innerHTML = `
+        <div class="msg-avatar" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: 2px solid rgba(255,255,255,0.3); font-size: 0.78rem;">AURA</div>
+        <div class="msg-bubble" style="background: rgba(226, 192, 133, 0.06); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 12px; padding: 1.2rem;">
+          <div style="font-weight: 700; color: var(--gold-primary); font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 0.4rem;">
+            📦 Real-Time Active Orders Tracker (${orders.length} Total Orders Tracked)
+          </div>
+          <p style="color: var(--text-main); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.5;">
+            Here is the live status of all active customer orders tracked in the relational database:
+          </p>
+          ${cardsHtml}
+        </div>
+      `;
+
+      if (chatStream) {
+        chatStream.appendChild(div);
+        chatStream.scrollTop = chatStream.scrollHeight;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  if (btnQuickTrackOrders) {
+    btnQuickTrackOrders.addEventListener('click', async () => {
+      await renderActiveOrdersTrackerInChat();
+    });
+  }
+
+  // 3. Instant Cancel Order Action & Dark Mode List Generator
+  if (btnQuickCancelOrder) {
+    btnQuickCancelOrder.addEventListener('click', async () => {
+      if (modalCancelOrder) modalCancelOrder.classList.remove('hidden');
+      await renderCancellableOrders();
+      await renderCancellableOrdersInChat();
+    });
+  }
+
+  if (closeCancelOrderModal && modalCancelOrder) {
+    closeCancelOrderModal.addEventListener('click', () => {
+      modalCancelOrder.classList.add('hidden');
+    });
+  }
+
+  async function renderCancellableOrders() {
+    if (!cancelOrdersListContainer) return;
+    cancelOrdersListContainer.innerHTML = `<div style="text-align: center; color: var(--gold-primary); padding: 1.5rem;">Fetching live relational database orders...</div>`;
+
+    try {
+      const res = await fetch('/api/orders');
+      const orders = await res.json();
+      
+      if (!orders || orders.length === 0) {
+        cancelOrdersListContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active orders found in database.</div>`;
+        return;
+      }
+
+      let html = '';
+      orders.forEach(o => {
+        const isCancellable = o.status !== 'SHIPPED' && o.status !== 'DELIVERED' && o.status !== 'CANCELLED';
+        
+        if (isCancellable) {
+          // Active Cancellable Order (Bright Highlighted)
+          html += `
+            <div style="background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 10px; padding: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem;">
+                  <span style="font-family: var(--font-mono); font-weight: 700; color: var(--gold-primary);">${escapeHtml(o.orderId)}</span>
+                  <span style="background: rgba(248, 113, 113, 0.15); color: var(--accent-danger); border: 1px solid var(--accent-danger); font-size: 0.72rem; padding: 0.15rem 0.55rem; border-radius: 4px; font-weight: 700;">● ${escapeHtml(o.status)}</span>
+                </div>
+                <div style="font-size: 0.88rem; color: #FFF; font-weight: 700;">${escapeHtml(o.productName)} (${escapeHtml(o.size)})</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.15rem;">Total: ${escapeHtml(o.priceInRupees || '$' + o.totalPrice)} • Carrier: ${escapeHtml(o.carrier)}</div>
+              </div>
+
+              <div>
+                <button type="button" onclick="cancelOrderFromModal('${escapeHtml(o.orderId)}')" style="background: linear-gradient(135deg, #EF4444, #B91C1C); color: #FFF; font-weight: 800; border: none; padding: 0.55rem 1rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease;">
+                  ❌ Cancel Order & Refund
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          // Shipped / Non-Cancellable Order (Darkened / Dimmed Mode)
+          let statusText = o.status === 'CANCELLED' ? 'ALREADY CANCELLED' : 'SHIPPED IN TRANSIT';
+          html += `
+            <div style="background: rgba(10, 13, 20, 0.7); border: 1px dashed rgba(255, 255, 255, 0.15); opacity: 0.6; border-radius: 10px; padding: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem;">
+                  <span style="font-family: var(--font-mono); font-weight: 700; color: var(--text-muted);">${escapeHtml(o.orderId)}</span>
+                  <span style="background: rgba(255,255,255,0.06); color: var(--accent-green); border: 1px solid rgba(255,255,255,0.1); font-size: 0.72rem; padding: 0.15rem 0.55rem; border-radius: 4px; font-weight: 700;">🔒 ${statusText}</span>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">${escapeHtml(o.productName)} (${escapeHtml(o.size)})</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Total: ${escapeHtml(o.priceInRupees || '$' + o.totalPrice)} • Carrier: ${escapeHtml(o.carrier)}</div>
+              </div>
+
+              <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); padding: 0.35rem 0.7rem; border-radius: 6px;">
+                  🔒 In Transit / Non-Cancellable Now
+                </span>
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      cancelOrdersListContainer.innerHTML = html;
+    } catch (err) {
+      console.error(err);
+      cancelOrdersListContainer.innerHTML = `<div style="color: var(--accent-danger); padding: 1.5rem;">Error loading orders: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  async function renderCancellableOrdersInChat() {
+    const aiMsgId = 'msg-' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'message msg-ai';
+    div.id = aiMsgId;
+
+    try {
+      const res = await fetch('/api/orders');
+      const orders = await res.json();
+
+      if (!orders || orders.length === 0) {
+        div.innerHTML = `
+          <div class="msg-avatar" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: 2px solid rgba(255,255,255,0.3); font-size: 0.78rem;">AURA</div>
+          <div class="msg-bubble" style="background: rgba(226, 192, 133, 0.06); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 12px; padding: 1.2rem;">
+            <div style="font-weight: 700; color: var(--gold-primary); font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 0.4rem;">
+              ❌ Order Cancellation Assistant
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">No active customer orders found in the database.</p>
+          </div>
+        `;
+        if (chatStream) {
+          chatStream.appendChild(div);
+          chatStream.scrollTop = chatStream.scrollHeight;
+        }
+        return;
+      }
+
+      let cardsHtml = `<div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem;">`;
+
+      orders.forEach(o => {
+        const isCancellable = o.status !== 'SHIPPED' && o.status !== 'DELIVERED' && o.status !== 'CANCELLED';
+        
+        if (isCancellable) {
+          cardsHtml += `
+            <div style="background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 12px; padding: 1.1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.4); flex-wrap: wrap; gap: 0.8rem;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem;">
+                  <span style="font-family: var(--font-mono); font-weight: 700; color: var(--gold-primary); font-size: 0.95rem;">${escapeHtml(o.orderId)}</span>
+                  <span style="background: rgba(248, 113, 113, 0.15); color: var(--accent-danger); border: 1px solid var(--accent-danger); font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 4px;">
+                    ● ${escapeHtml(o.status)} (Cancellable)
+                  </span>
+                </div>
+                <div style="font-size: 0.92rem; color: #FFF; font-weight: 700;">${escapeHtml(o.productName)} (${escapeHtml(o.size)})</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">
+                  Total: <strong>${escapeHtml(o.priceInRupees || '$' + o.totalPrice)}</strong> • Carrier: ${escapeHtml(o.carrier)} (Code: <code>${escapeHtml(o.trackingNumber)}</code>)
+                </div>
+              </div>
+
+              <div>
+                <button type="button" onclick="cancelOrderFromModal('${escapeHtml(o.orderId)}')" style="background: linear-gradient(135deg, #EF4444, #B91C1C); color: #FFF; font-weight: 800; border: none; padding: 0.6rem 1.1rem; border-radius: 8px; font-size: 0.82rem; cursor: pointer; display: flex; align-items: gap: 0.4rem; box-shadow: 0 0 12px rgba(248, 113, 113, 0.3); transition: all 0.2s ease;">
+                  ❌ Cancel Order & Refund
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          let statusTag = o.status === 'CANCELLED' ? 'ALREADY CANCELLED' : 'SHIPPED IN TRANSIT';
+          cardsHtml += `
+            <div style="background: rgba(10, 13, 20, 0.7); border: 1px dashed rgba(255, 255, 255, 0.15); opacity: 0.6; border-radius: 12px; padding: 1.1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem;">
+                  <span style="font-family: var(--font-mono); font-weight: 700; color: var(--text-muted); font-size: 0.95rem;">${escapeHtml(o.orderId)}</span>
+                  <span style="background: rgba(255, 255, 255, 0.06); color: var(--accent-green); border: 1px solid rgba(255,255,255,0.1); font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 4px;">
+                    🔒 ${statusTag}
+                  </span>
+                </div>
+                <div style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">${escapeHtml(o.productName)} (${escapeHtml(o.size)})</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">
+                  Total: ${escapeHtml(o.priceInRupees || '$' + o.totalPrice)} • Carrier: ${escapeHtml(o.carrier)} (Code: <code>${escapeHtml(o.trackingNumber)}</code>)
+                </div>
+              </div>
+
+              <div>
+                <span style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.75rem; font-weight: 600; padding: 0.4rem 0.8rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.4rem;">
+                  🔒 In Transit / Non-Cancellable Now
+                </span>
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      cardsHtml += `</div>`;
+
+      div.innerHTML = `
+        <div class="msg-avatar" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: 2px solid rgba(255,255,255,0.3); font-size: 0.78rem;">AURA</div>
+        <div class="msg-bubble" style="background: rgba(226, 192, 133, 0.06); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 12px; padding: 1.2rem;">
+          <div style="font-weight: 700; color: var(--accent-danger); font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 0.4rem;">
+            ❌ Order Cancellation & Refund Selector
+          </div>
+          <p style="color: var(--text-main); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.5;">
+            Select an active order below to cancel and issue an instant refund. Shipped orders are shown in <strong>Dark Mode</strong> as they are already in transit and cannot be cancelled online.
+          </p>
+          ${cardsHtml}
+        </div>
+      `;
+
+      if (chatStream) {
+        chatStream.appendChild(div);
+        chatStream.scrollTop = chatStream.scrollHeight;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  window.cancelOrderFromModal = function(orderId) {
+    if (modalCancelOrder) modalCancelOrder.classList.add('hidden');
+    if (agentModeToggle) {
+      agentModeToggle.checked = true;
+      if (sendBtnLabel) sendBtnLabel.textContent = "🤖 Run Autonomous Agent";
+      if (agentModeText) agentModeText.textContent = "🤖 ReAct Agent Mode (Tool Calling Enabled)";
+    }
+    window.triggerQuickChat(`Cancel order ${orderId}`);
+  };
 
   // Prompt Chips Click Handlers
   document.querySelectorAll('.chip-btn').forEach(btn => {
@@ -102,13 +612,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Global Quantity Adjuster for Retail Cards
+  window.changeCardQty = function(btn, delta) {
+    const container = btn.closest('div');
+    if (!container) return;
+    const qtyEl = container.querySelector('.card-qty-val');
+    if (!qtyEl) return;
+    let val = parseInt(qtyEl.textContent) || 1;
+    val = Math.max(1, Math.min(10, val + delta));
+    qtyEl.textContent = val;
+  };
+
   // Global 1-Click Instant Order Button Listener
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('.btn-order-instant');
     if (btn) {
       const perfumeName = btn.getAttribute('data-perfume');
+      const card = btn.closest('.rec-card');
+      let qty = 1;
+      if (card) {
+        const qtyEl = card.querySelector('.card-qty-val');
+        if (qtyEl) qty = parseInt(qtyEl.textContent) || 1;
+      }
       if (perfumeName) {
-        chatInput.value = `Place order for ${perfumeName}`;
+        if (agentModeToggle) {
+          agentModeToggle.checked = true;
+          if (sendBtnLabel) sendBtnLabel.textContent = "🤖 Run Autonomous Agent";
+          const agentModeText = document.getElementById('agent-mode-text');
+          if (agentModeText) agentModeText.textContent = "🤖 ReAct Agent Mode (Tool Calling Enabled)";
+        }
+        chatInput.value = `Place order for ${qty} x ${perfumeName}`;
         chatForm.dispatchEvent(new Event('submit'));
       }
     }
@@ -180,64 +713,298 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Cache for raw OMS state to enable instant client-side filtering
+  let currentOmsOrders = [];
+  let currentOmsProducts = [];
+
   // Fetch Live Order OMS & Relational Stock Data
   if (btnRefreshOMS) {
-    btnRefreshOMS.addEventListener('click', fetchOMSData);
+    btnRefreshOMS.addEventListener('click', () => {
+      const icon = document.getElementById('oms-refresh-icon');
+      if (icon) icon.style.transform = 'rotate(360deg)';
+      fetchOMSData().finally(() => {
+        setTimeout(() => { if (icon) icon.style.transform = 'none'; }, 300);
+      });
+    });
   }
+
+  // Simulate Test Order Listener
+  const btnSimulateOrder = document.getElementById('btn-simulate-order');
+  if (btnSimulateOrder) {
+    btnSimulateOrder.addEventListener('click', async () => {
+      try {
+        btnSimulateOrder.disabled = true;
+        btnSimulateOrder.innerText = '⏳ Placing...';
+
+        const sampleProducts = [
+          "Royal Oud & Mysore Sandalwood",
+          "Royal Kashmir Saffron & Amber",
+          "Solar Malabar Citrus & Vetiver",
+          "Imperial Kannauj Rose & Suede"
+        ];
+        const randomProduct = sampleProducts[Math.floor(Math.random() * sampleProducts.length)];
+
+        const res = await fetch('/api/orders/place', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: randomProduct, size: "100ml", quantity: 1 })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showNotification(`✨ Test Order ${data.order.orderId} Placed!`, 'success');
+          await fetchOMSData();
+        } else {
+          showNotification(`⚠️ ${data.message}`, 'error');
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        btnSimulateOrder.disabled = false;
+        btnSimulateOrder.innerHTML = '<span>✨</span> Simulate Test Order';
+      }
+    });
+  }
+
+  // OMS Live Search Filter Listener
+  const omsSearchInput = document.getElementById('oms-search-input');
+  if (omsSearchInput) {
+    omsSearchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      renderOrdersTable(currentOmsOrders, query);
+      renderStockTable(currentOmsProducts, query);
+    });
+  }
+
+  // OMS Tab View Switcher
+  const omsTabBtns = document.querySelectorAll('#oms-view-tabs .oms-tab-btn');
+  const omsOrdersPanel = document.getElementById('oms-orders-panel');
+  const omsStockPanel = document.getElementById('oms-stock-panel');
+  
+  omsTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      omsTabBtns.forEach(b => {
+        b.classList.remove('active');
+        b.style.background = 'rgba(255,255,255,0.04)';
+        b.style.border = '1px solid rgba(255,255,255,0.1)';
+        b.style.color = 'var(--text-muted)';
+      });
+      btn.classList.add('active');
+      btn.style.background = 'rgba(226, 192, 133, 0.15)';
+      btn.style.border = '1px solid var(--gold-primary)';
+      btn.style.color = 'var(--gold-primary)';
+
+      const tab = btn.getAttribute('data-tab');
+      if (tab === 'all') {
+        if (omsOrdersPanel) omsOrdersPanel.style.display = 'block';
+        if (omsStockPanel) omsStockPanel.style.display = 'block';
+      } else if (tab === 'orders') {
+        if (omsOrdersPanel) omsOrdersPanel.style.display = 'block';
+        if (omsStockPanel) omsStockPanel.style.display = 'none';
+      } else if (tab === 'stock') {
+        if (omsOrdersPanel) omsOrdersPanel.style.display = 'none';
+        if (omsStockPanel) omsStockPanel.style.display = 'block';
+      }
+    });
+  });
 
   async function fetchOMSData() {
     try {
       // Fetch Orders
       const resOrders = await fetch('/api/orders');
       const orders = await resOrders.json();
-      renderOrdersTable(orders);
+      currentOmsOrders = Array.isArray(orders) ? orders : [];
 
       // Fetch Stock Catalog
       const resProducts = await fetch('/api/products');
       const dataProd = await resProducts.json();
-      renderStockTable(dataProd.products);
+      currentOmsProducts = Array.isArray(dataProd.products) ? dataProd.products : [];
+
+      // Update KPI Metrics
+      updateOmsKpis(currentOmsOrders, currentOmsProducts);
+
+      // Render Tables with active search query if any
+      const searchVal = omsSearchInput ? omsSearchInput.value.toLowerCase().trim() : '';
+      renderOrdersTable(currentOmsOrders, searchVal);
+      renderStockTable(currentOmsProducts, searchVal);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching OMS data:', err);
     }
   }
 
-  function renderOrdersTable(orders) {
+  function updateOmsKpis(orders, products) {
+    const kpiOrdersCount = document.getElementById('kpi-orders-count');
+    const kpiOrdersSub = document.getElementById('kpi-orders-sub');
+    const kpiStockSkus = document.getElementById('kpi-stock-skus');
+    const kpiStockUnits = document.getElementById('kpi-stock-units');
+    const kpiStockHealth = document.getElementById('kpi-stock-health');
+    const kpiStockAlerts = document.getElementById('kpi-stock-alerts');
+    const badgeOrdersCount = document.getElementById('oms-orders-badge-count');
+    const badgeStockCount = document.getElementById('oms-stock-badge-count');
+
+    const totalOrders = orders.length;
+    const processingCount = orders.filter(o => o.status === 'PROCESSING').length;
+    const totalSkus = products.length;
+    const totalUnits = products.reduce((acc, p) => acc + (p.stockCount || 0), 0);
+    const lowStockCount = products.filter(p => (p.stockCount || 0) < 15).length;
+    const outOfStockCount = products.filter(p => !p.inStock || p.stockCount === 0).length;
+
+    if (kpiOrdersCount) kpiOrdersCount.innerText = totalOrders;
+    if (kpiOrdersSub) kpiOrdersSub.innerText = `${processingCount} Processing`;
+    if (badgeOrdersCount) badgeOrdersCount.innerText = totalOrders;
+
+    if (kpiStockSkus) kpiStockSkus.innerText = totalSkus;
+    if (kpiStockUnits) kpiStockUnits.innerText = `${totalUnits} total units`;
+    if (badgeStockCount) badgeStockCount.innerText = totalSkus;
+
+    if (kpiStockHealth) {
+      if (outOfStockCount > 0) {
+        kpiStockHealth.innerText = `${outOfStockCount} Out of Stock`;
+        kpiStockHealth.style.color = 'var(--accent-danger)';
+      } else if (lowStockCount > 0) {
+        kpiStockHealth.innerText = `Optimal (${lowStockCount} Low)`;
+        kpiStockHealth.style.color = '#FBBF24';
+      } else {
+        kpiStockHealth.innerText = `100% Stocked`;
+        kpiStockHealth.style.color = 'var(--accent-green)';
+      }
+    }
+    if (kpiStockAlerts) kpiStockAlerts.innerText = `${lowStockCount} Low Stock SKUs`;
+  }
+
+  function renderOrdersTable(orders, filterQuery = '') {
     if (!omsOrdersTbody) return;
-    if (!orders || orders.length === 0) {
-      omsOrdersTbody.innerHTML = `<tr><td colspan="4" class="text-center">No orders found in database.</td></tr>`;
+
+    let filtered = orders;
+    if (filterQuery) {
+      filtered = orders.filter(o => 
+        (o.orderId && o.orderId.toLowerCase().includes(filterQuery)) ||
+        (o.productName && o.productName.toLowerCase().includes(filterQuery)) ||
+        (o.status && o.status.toLowerCase().includes(filterQuery)) ||
+        (o.trackingNumber && o.trackingNumber.toLowerCase().includes(filterQuery))
+      );
+    }
+
+    if (!filtered || filtered.length === 0) {
+      omsOrdersTbody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding: 1.5rem; color: var(--text-muted);">No matching orders found.</td></tr>`;
       return;
     }
 
-    omsOrdersTbody.innerHTML = orders.map(o => {
-      let statusColor = "var(--gold-primary)";
-      if (o.status === "SHIPPED") statusColor = "var(--accent-cyan)";
-      if (o.status === "CANCELLED") statusColor = "var(--accent-danger)";
-      if (o.status === "DELIVERED") statusColor = "var(--accent-green)";
+    omsOrdersTbody.innerHTML = filtered.map(o => {
+      let statusClass = "processing";
+      let statusLabel = "● PROCESSING";
+      if (o.status === "SHIPPED") { statusClass = "shipped"; statusLabel = "● SHIPPED"; }
+      if (o.status === "CANCELLED") { statusClass = "cancelled"; statusLabel = "● CANCELLED"; }
+      if (o.status === "DELIVERED") { statusClass = "delivered"; statusLabel = "● DELIVERED"; }
+
+      const isCancelable = o.status === "PROCESSING";
 
       return `
-        <tr>
-          <td style="color:var(--gold-primary); font-weight:700">${escapeHtml(o.orderId)}</td>
-          <td>${escapeHtml(o.productName)}</td>
-          <td><span style="color:${statusColor}; font-weight:700">● ${escapeHtml(o.status)}</span></td>
-          <td style="font-family:var(--font-mono); font-size:0.75rem">${escapeHtml(o.trackingNumber || 'N/A')}</td>
+        <tr class="oms-table-row">
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span class="oms-order-id">${escapeHtml(o.orderId)}</span>
+          </td>
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); min-width: 250px;">
+            <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; white-space: nowrap;">${escapeHtml(o.productName)}</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">${o.size || '100ml'} x ${o.quantity || 1} unit</div>
+          </td>
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 700; color: var(--gold-primary); font-family: var(--font-mono);">
+            ${o.priceInRupees || '₹' + ((o.totalPrice || 200) * 80).toLocaleString('en-IN')}
+          </td>
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span class="oms-status-pill ${statusClass}">${escapeHtml(statusLabel)}</span>
+          </td>
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(o.trackingNumber || 'N/A')}</div>
+            ${isCancelable ? `<button class="btn-cancel-order-inline" onclick="cancelOmsOrder('${escapeHtml(o.orderId)}')">Cancel Order</button>` : ''}
+          </td>
         </tr>
       `;
     }).join('');
   }
 
-  function renderStockTable(products) {
+  function renderStockTable(products, filterQuery = '') {
     if (!omsStockTbody) return;
-    if (!products) return;
 
-    omsStockTbody.innerHTML = products.map(p => `
-      <tr>
-        <td style="font-weight:600">${escapeHtml(p.name)}</td>
-        <td style="font-weight:700; color:var(--gold-primary)">${p.inRupees || '₹' + (p.price * 80)}</td>
-        <td style="font-family:var(--font-mono); font-weight:700; color:${p.stockCount > 0 ? 'var(--gold-primary)' : 'var(--accent-danger)'}">${p.stockCount} units</td>
-        <td><span style="color:${p.inStock ? 'var(--accent-green)' : 'var(--accent-danger)'}">${p.inStock ? 'IN STOCK' : 'OUT OF STOCK'}</span></td>
-      </tr>
-    `).join('');
+    let filtered = products;
+    if (filterQuery) {
+      filtered = products.filter(p => 
+        (p.name && p.name.toLowerCase().includes(filterQuery)) ||
+        (p.accords && p.accords.some(a => a.toLowerCase().includes(filterQuery)))
+      );
+    }
+
+    if (!filtered || filtered.length === 0) {
+      omsStockTbody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding: 1.5rem; color: var(--text-muted);">No matching inventory items found.</td></tr>`;
+      return;
+    }
+
+    omsStockTbody.innerHTML = filtered.map(p => {
+      const stock = p.stockCount !== undefined ? p.stockCount : 25;
+      const maxCap = 50;
+      const pct = Math.min(100, Math.max(0, Math.round((stock / maxCap) * 100)));
+      
+      let meterClass = "high";
+      let tagClass = "in";
+      let tagLabel = "IN STOCK";
+
+      if (stock === 0 || !p.inStock) {
+        meterClass = "critical";
+        tagClass = "out";
+        tagLabel = "OUT OF STOCK";
+      } else if (stock < 15) {
+        meterClass = "medium";
+        tagClass = "low";
+        tagLabel = "LOW STOCK";
+      }
+
+      return `
+        <tr class="oms-table-row">
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); min-width: 250px;">
+            <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; white-space: nowrap;">${escapeHtml(p.name)}</div>
+            <div style="font-size: 0.7rem; color: var(--gold-primary); opacity: 0.8;">${p.notes ? escapeHtml(p.notes.top || p.notes.heart || '') : ''}</div>
+          </td>
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 700; color: var(--gold-primary); font-family: var(--font-mono);">
+            ${p.inRupees || '₹' + (p.price * 80).toLocaleString('en-IN')}
+          </td>
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); min-width: 140px;">
+            <div class="stock-meter-container">
+              <div style="display:flex; justify-content:space-between; font-size:0.72rem; font-family:var(--font-mono); color:var(--text-main);">
+                <span>${stock} units</span>
+                <span style="color:var(--text-muted); font-size:0.68rem;">${pct}%</span>
+              </div>
+              <div class="stock-meter-bg">
+                <div class="stock-meter-fill ${meterClass}" style="width: ${pct}%;"></div>
+              </div>
+            </div>
+          </td>
+          <td style="padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span class="oms-stock-tag ${tagClass}">${tagLabel}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
   }
+
+  // Global inline cancellation handler attached to window so table button onclick works cleanly
+  window.cancelOmsOrder = async function(orderId) {
+    if (!confirm(`Are you sure you want to cancel order ${orderId}?`)) return;
+    try {
+      const res = await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(`Order ${orderId} cancelled & refund issued! Restored inventory stock.`, 'success');
+        await fetchOMSData();
+      } else {
+        showNotification(`⚠️ ${data.message}`, 'error');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Fetch Gateway Load Balancer & Circuit Breaker Status
   async function fetchGatewayStatus() {
@@ -365,35 +1132,77 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnRunEvals) {
     btnRunEvals.addEventListener('click', async () => {
       if (evalsOutputBox) evalsOutputBox.classList.remove('hidden');
-      if (evalsTraceContent) evalsTraceContent.innerHTML = `<div style="color: var(--accent-cyan);">⚡ Running LLMOps Ragas Evaluation Suite against benchmark test cases...</div>`;
+      if (evalsTraceContent) {
+        evalsTraceContent.innerHTML = `
+          <div style="color: var(--accent-cyan); font-family: var(--font-mono); font-size: 0.9rem; text-align: center; padding: 2rem 1rem;">
+            ⏳ Running LLMOps Ragas Evaluation Suite against benchmark test suite (Faithfulness, Relevance, Precision)...
+          </div>
+        `;
+      }
 
       try {
         const res = await fetch('/api/evals', { method: 'POST' });
         const data = await res.json();
         
+        const scores = data.overallScores || {};
+        const compositePct = Math.round((scores.ragasCompositeQualityScore || 0) * 100);
+
         let html = `
-          <div style="color: var(--accent-green); font-weight: 700; margin-bottom: 0.6rem;">
-            📊 Ragas Evaluation Benchmark Results (Composite Quality Score: ${data.overallScores.ragasCompositeQualityScore})
+          <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+              <div style="font-family: var(--font-serif); color: var(--accent-cyan); font-size: 1.15rem; font-weight: 700;">
+                📊 Ragas Framework Quality Benchmark Report
+              </div>
+              <span style="background: rgba(52, 211, 153, 0.15); border: 1px solid rgba(52, 211, 153, 0.3); color: var(--accent-green); font-size: 0.78rem; font-weight: 700; padding: 0.2rem 0.7rem; border-radius: 20px;">
+                COMPOSITE SCORE: ${compositePct}% (${scores.ragasCompositeQualityScore} / 1.0)
+              </span>
+            </div>
+
+            <!-- Score breakdown grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; margin-top: 0.8rem;">
+              <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); padding: 0.7rem; border-radius: 8px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Faithfulness</div>
+                <div style="font-size: 1.3rem; font-weight: 700; color: var(--gold-primary); font-family: var(--font-mono);">${scores.avgFaithfulness || 0}</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); padding: 0.7rem; border-radius: 8px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Answer Relevance</div>
+                <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent-cyan); font-family: var(--font-mono);">${scores.avgAnswerRelevance || 0}</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); padding: 0.7rem; border-radius: 8px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Context Precision</div>
+                <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent-green); font-family: var(--font-mono);">${scores.avgContextPrecision || 0}</div>
+              </div>
+            </div>
           </div>
-          <div style="font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 0.8rem;">
-            Faithfulness: <strong>${data.overallScores.avgFaithfulness}</strong> | 
-            Answer Relevance: <strong>${data.overallScores.avgAnswerRelevance}</strong> | 
-            Context Precision: <strong>${data.overallScores.avgContextPrecision}</strong>
+
+          <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); margin-bottom: 0.8rem;">
+            Test Case Benchmark Spans (${data.testResults ? data.testResults.length : 0} executed):
           </div>
         `;
 
-        data.testResults.forEach(t => {
-          html += `
-            <div style="padding: 0.4rem; background: rgba(255,255,255,0.03); margin-bottom: 0.4rem; border-radius: 4px; font-size: 0.78rem;">
-              <span style="color: var(--gold-primary); font-weight: 700;">[${escapeHtml(t.testId)}] "${escapeHtml(t.query)}"</span> ➔ 
-              <span style="color: var(--accent-green)">MATCH: ${escapeHtml(t.actualTopProduct)} (${(t.topSimilarity*100).toFixed(1)}%) - ${escapeHtml(t.status)}</span>
-            </div>
-          `;
-        });
+        if (data.testResults) {
+          data.testResults.forEach(t => {
+            const isPassed = t.status === "PASSED";
+            const scorePct = Math.round((t.vectorScore || 0) * 100);
+            html += `
+              <div style="padding: 0.8rem 1rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid ${isPassed ? 'var(--accent-green)' : 'var(--accent-danger)'}; margin-bottom: 0.6rem; border-radius: 8px; font-size: 0.82rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                  <span style="font-family: var(--font-mono); color: var(--gold-primary); font-weight: 700;">[${escapeHtml(t.evalId)}] "${escapeHtml(t.query)}"</span>
+                  <span style="background: ${isPassed ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)'}; color: ${isPassed ? 'var(--accent-green)' : 'var(--accent-danger)'}; font-weight: 700; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: 12px;">
+                    ${escapeHtml(t.status)} (${scorePct}% Precision)
+                  </span>
+                </div>
+                <div style="color: var(--text-muted); font-size: 0.78rem;">
+                  Retrieved Product: <strong style="color: var(--text-main);">${escapeHtml(t.topProductRetrieved)}</strong> | Faithfulness: <strong>${t.faithfulnessScore}</strong> | Relevance: <strong>${t.answerRelevanceScore}</strong>
+                </div>
+              </div>
+            `;
+          });
+        }
 
         if (evalsTraceContent) evalsTraceContent.innerHTML = html;
       } catch (err) {
-        if (evalsTraceContent) evalsTraceContent.innerHTML = `<div style="color: var(--accent-danger)">Error: ${err.message}</div>`;
+        if (evalsTraceContent) evalsTraceContent.innerHTML = `<div style="color: var(--accent-danger); padding: 1.5rem;">Error executing Ragas Evals: ${escapeHtml(err.message)}</div>`;
       }
     });
   }
@@ -402,30 +1211,65 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnRunRedteam) {
     btnRunRedteam.addEventListener('click', async () => {
       if (evalsOutputBox) evalsOutputBox.classList.remove('hidden');
-      if (evalsTraceContent) evalsTraceContent.innerHTML = `<div style="color: var(--accent-danger);">🛡 Firing Adversarial Red-Team Payloads (Prompt Injections, PII Extractions, DAN Jailbreaks)...</div>`;
+      if (evalsTraceContent) {
+        evalsTraceContent.innerHTML = `
+          <div style="color: var(--accent-danger); font-family: var(--font-mono); font-size: 0.9rem; text-align: center; padding: 2rem 1rem;">
+            🛡 Firing Adversarial Red-Team Attack Payloads (Prompt Injections, PII Exfiltrations, DAN Jailbreaks)...
+          </div>
+        `;
+      }
 
       try {
         const res = await fetch('/api/redteam', { method: 'POST' });
         const data = await res.json();
 
         let html = `
-          <div style="color: var(--accent-green); font-weight: 700; margin-bottom: 0.6rem;">
-            🛡 Adversarial Red-Team Audit Report (${data.defensePassRate} Pass Rate - ${escapeHtml(data.status)})
+          <div style="background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-family: var(--font-serif); color: var(--accent-danger); font-size: 1.15rem; font-weight: 700;">
+                🛡 Security Red-Teaming Adversarial Audit Report
+              </div>
+              <span style="background: rgba(52, 211, 153, 0.15); border: 1px solid rgba(52, 211, 153, 0.3); color: var(--accent-green); font-size: 0.78rem; font-weight: 700; padding: 0.2rem 0.7rem; border-radius: 20px;">
+                DEFENSE PASS RATE: ${escapeHtml(data.defensePassRate)} (${data.attacksNeutralized}/${data.totalAttacksTested} Neutralized)
+              </span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+              Audit Status: <strong style="color: var(--accent-green);">${escapeHtml(data.status)}</strong>
+            </div>
+          </div>
+
+          <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); margin-bottom: 0.8rem;">
+            Adversarial Attack Vectors Audit Log:
           </div>
         `;
 
-        data.auditTrace.forEach(a => {
-          html += `
-            <div style="padding: 0.4rem; background: rgba(255,255,255,0.03); margin-bottom: 0.4rem; border-radius: 4px; font-size: 0.78rem;">
-              <span style="color: var(--accent-purple); font-weight: 700;">[${escapeHtml(a.attackId)}] ${escapeHtml(a.category)}:</span> "${escapeHtml(a.prompt)}" ➔ 
-              <span style="color: var(--accent-green)">STATUS: ${escapeHtml(a.status)} (${a.reasons.map(escapeHtml).join(', ')})</span>
-            </div>
-          `;
-        });
+        if (data.auditTrace) {
+          data.auditTrace.forEach(a => {
+            const isNeutralized = a.outcome === "ATTACK_NEUTRALIZED";
+            html += `
+              <div style="padding: 0.8rem 1rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid ${isNeutralized ? 'var(--accent-green)' : 'var(--accent-danger)'}; margin-bottom: 0.6rem; border-radius: 8px; font-size: 0.82rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                  <div>
+                    <span style="color: var(--accent-purple); font-weight: 700; font-family: var(--font-mono);">[${escapeHtml(a.attackId)}] ${escapeHtml(a.attackType)}</span>
+                  </div>
+                  <span style="background: ${isNeutralized ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)'}; color: ${isNeutralized ? 'var(--accent-green)' : 'var(--accent-danger)'}; font-weight: 700; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: 12px;">
+                    ${escapeHtml(a.outcome)}
+                  </span>
+                </div>
+                <div style="color: var(--text-main); margin-bottom: 0.2rem;">
+                  Adversarial Payload: <code style="background: rgba(255,255,255,0.08); padding: 0.1rem 0.4rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.76rem;">"${escapeHtml(a.rawPrompt)}"</code>
+                </div>
+                <div style="color: var(--text-muted); font-size: 0.75rem;">
+                  Sanitized Vector: "${escapeHtml(a.sanitizedPrompt)}" | LLM Gateway Flagged: <strong>${a.gatewayFlagged ? 'YES' : 'NO'}</strong> | Content Safety Passed: <strong>${a.contentSafetyPassed ? 'YES' : 'NO'}</strong>
+                </div>
+              </div>
+            `;
+          });
+        }
 
         if (evalsTraceContent) evalsTraceContent.innerHTML = html;
       } catch (err) {
-        if (evalsTraceContent) evalsTraceContent.innerHTML = `<div style="color: var(--accent-danger)">Error: ${err.message}</div>`;
+        if (evalsTraceContent) evalsTraceContent.innerHTML = `<div style="color: var(--accent-danger); padding: 1.5rem;">Error executing Red-Team Audit: ${escapeHtml(err.message)}</div>`;
       }
     });
   }
@@ -450,9 +1294,11 @@ document.addEventListener('DOMContentLoaded', () => {
     div.className = 'message msg-ai';
     div.id = id;
     div.innerHTML = `
-      <div class="msg-avatar">AURA</div>
-      <div class="msg-bubble">
-        <p class="pulse-text">Evaluating scent vectors & guardrails...</p>
+      <div class="msg-avatar" style="background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: 2px solid rgba(255,255,255,0.3); font-size: 0.78rem;">AURA</div>
+      <div class="msg-bubble" style="background: rgba(226, 192, 133, 0.06); border: 1px solid rgba(226, 192, 133, 0.25); border-radius: 12px; padding: 1.2rem;">
+        <p class="pulse-text" style="color: var(--gold-primary); font-family: var(--font-serif); font-size: 0.9rem;">
+          🌸 AURA Sommelier is searching 6D vector space & querying warehouse inventory...
+        </p>
       </div>
     `;
     if (chatStream) {
@@ -474,32 +1320,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let recCardsHtml = '';
     if (data.retrievedProducts && data.retrievedProducts.length > 0) {
-      recCardsHtml = `<div class="rec-cards">` + data.retrievedProducts.map(p => `
-        <div class="rec-card">
-          <div class="rec-title">${escapeHtml(p.name)}</div>
-          <div class="rec-price">${p.inRupees || '$' + p.price} • ${escapeHtml(p.family)}</div>
-          <div class="rec-notes">Notes: ${p.topNotes ? p.topNotes.slice(0, 2).map(escapeHtml).join(', ') : ''}</div>
-          <div style="font-size:0.75rem; color:var(--gold-primary); font-family:var(--font-mono); margin-top:0.3rem;">Vector Match: ${p.vectorScore ? (p.vectorScore * 100).toFixed(1) : 0}%</div>
-          <button class="btn-order-instant" data-perfume="${escapeHtml(p.name)}" style="background:linear-gradient(135deg, var(--gold-primary), #B48847); color:#000; font-weight:700; border:none; padding:0.4rem 0.8rem; border-radius:4px; margin-top:0.5rem; cursor:pointer; font-size:0.78rem; width:100%; transition:transform 0.1s ease;">
-            🛒 1-Click Instant Order (${p.inRupees || '$' + p.price})
-          </button>
+      recCardsHtml = `<div class="rec-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.9rem; margin-top: 1rem;">` + data.retrievedProducts.map(p => `
+        <div class="rec-card" style="background: rgba(15, 20, 32, 0.9); border: 1px solid rgba(226, 192, 133, 0.3); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
+          <div>
+            <div style="font-family: var(--font-serif); color: var(--gold-primary); font-size: 1.02rem; font-weight: 700; margin-bottom: 0.2rem;">
+              ${escapeHtml(p.name)}
+            </div>
+            <div style="font-size: 0.9rem; color: #FFF; font-weight: 700; margin-bottom: 0.4rem;">
+              ${p.inRupees || '$' + p.price} <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: normal;">• ${escapeHtml(p.family)}</span>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">
+              🌸 ${p.topNotes ? p.topNotes.slice(0, 2).map(escapeHtml).join(', ') : 'Assam Oud, Sandalwood'}
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem; margin-top: 0.4rem;">
+            <!-- Simple Quantity Controls -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Quantity:</span>
+              <div style="display: flex; align-items: center; gap: 0.6rem; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 0.2rem 0.6rem;">
+                <button type="button" onclick="changeCardQty(this, -1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 0.95rem; line-height: 1;">-</button>
+                <span class="card-qty-val" style="font-size: 0.85rem; font-weight: 700; font-family: var(--font-mono); color: #fff;">1</span>
+                <button type="button" onclick="changeCardQty(this, 1)" style="background: none; border: none; color: var(--gold-primary); font-weight: 800; cursor: pointer; font-size: 0.95rem; line-height: 1;">+</button>
+              </div>
+            </div>
+
+            <!-- 1-Click Buy Button -->
+            <button class="btn-order-instant" data-perfume="${escapeHtml(p.name)}" style="width: 100%; background: linear-gradient(135deg, var(--gold-primary), #B48847); color: #000; font-weight: 800; border: none; padding: 0.6rem; border-radius: 8px; cursor: pointer; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; transition: transform 0.1s ease;">
+              🛒 1-Click Buy (${p.inRupees || '$' + p.price})
+            </button>
+          </div>
         </div>
       `).join('') + `</div>`;
     }
 
     let routingTraceHtml = '';
     if (data.routingTrace && data.routingTrace.length > 0) {
-      routingTraceHtml = `<div style="margin-top:0.6rem; background:rgba(0,0,0,0.4); border:1px solid rgba(226,192,133,0.15); border-radius:6px; padding:0.5rem 0.8rem; font-family:var(--font-mono); font-size:0.72rem;">` +
-        `<div style="color:var(--gold-primary); font-weight:bold; margin-bottom:0.3rem;">🔀 LLM Gateway Dynamic Route Trace:</div>` +
-        data.routingTrace.map(step => `<div style="color:var(--text-muted); margin-bottom:0.15rem;">↳ ${escapeHtml(step)}</div>`).join('') +
-        `</div>`;
+      routingTraceHtml = `
+        <details style="margin-top:0.8rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.5rem 0.8rem;">
+          <summary style="font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono); cursor:pointer; outline:none; user-select:none;">
+            🔍 View Technical Gateway Route & Telemetry Trace
+          </summary>
+          <div style="margin-top:0.5rem; font-family:var(--font-mono); font-size:0.72rem; color:var(--text-muted); border-top:1px solid rgba(255,255,255,0.06); padding-top:0.5rem;">
+            ${data.routingTrace.map(step => `<div style="margin-bottom:0.15rem;">↳ ${escapeHtml(step)}</div>`).join('')}
+          </div>
+        </details>
+      `;
     }
 
     bubble.innerHTML = `
-      <p>${formatMarkdown(data.response)}</p>
+      <div style="color: var(--text-main); font-size: 0.92rem; line-height: 1.6;">${formatMarkdown(data.response)}</div>
       ${recCardsHtml}
       ${routingTraceHtml}
-      <div class="msg-meta">
+      <div class="msg-meta" style="margin-top: 0.8rem;">
         ${cacheBadge}
         ${guardrailBadge}
         ${failoverBadge}
@@ -717,20 +1590,20 @@ document.addEventListener('DOMContentLoaded', () => {
         data.conversationTrace.forEach(step => {
           let agentColor = "var(--gold-primary)";
           let agentIcon = "🌸";
-          let agentTitle = "Master Perfumer (SommelierAgent)";
+          let agentTitle = "Olfactory Sommelier & Fragrance Architect";
 
-          if (step.agent === "InventoryAgent") {
+          if (step.agent === "ConciergeAgent") {
+            agentColor = "var(--accent-purple)";
+            agentIcon = "💎";
+            agentTitle = "VIP Experience & Gifting Concierge";
+          } else if (step.agent === "InventoryAgent") {
             agentColor = "var(--accent-cyan)";
             agentIcon = "📦";
-            agentTitle = "Atelier Inventory Manager";
-          } else if (step.agent === "ChemistAgent") {
+            agentTitle = "Global Atelier Inventory & OMS Strategist";
+          } else if (step.agent === "HeritageAgent") {
             agentColor = "var(--accent-green)";
-            agentIcon = "🧪";
-            agentTitle = "Perfume Chemist";
-          } else if (step.agent === "ComplianceAgent") {
-            agentColor = "var(--accent-danger)";
-            agentIcon = "🛡️";
-            agentTitle = "Safety & IFRA Regulatory Director";
+            agentIcon = "👑";
+            agentTitle = "Royal Heritage & Authenticity Officer";
           }
 
           html += `
@@ -748,17 +1621,17 @@ document.addEventListener('DOMContentLoaded', () => {
       // Render Royal Sign-Off Certificate Card
       html += `
         <div style="background:linear-gradient(135deg, rgba(226,192,133,0.15), rgba(10,13,20,0.9)); border:2px solid var(--gold-primary); border-radius:12px; padding:1.2rem; margin-top:1.5rem; text-align:center; box-shadow:0 0 20px rgba(226,192,133,0.2);">
-          <div style="font-family:var(--font-title); color:var(--gold-primary); font-size:1.1rem; font-weight:700; letter-spacing:1px; margin-bottom:0.4rem;">
-            📜 ROYAL PERFUMERY AI COMMITTEE UNANIMOUS CERTIFICATE
+          <div style="font-family:var(--font-serif); color:var(--gold-primary); font-size:1.1rem; font-weight:700; letter-spacing:1px; margin-bottom:0.4rem;">
+            📜 ROYAL FRAGRANCE ADVISORY COMMITTEE UNANIMOUS CONSENSUS
           </div>
           <div style="font-size:0.85rem; color:var(--text-main); margin-bottom:1rem;">
             ${formatMarkdown(data.finalConsensus)}
           </div>
           <div style="display:flex; justify-content:center; gap:1.2rem; flex-wrap:wrap; font-size:0.78rem; font-family:var(--font-mono); color:var(--accent-green);">
-            <span>✓ Master Perfumer Signed</span>
-            <span>✓ Stock Verified</span>
-            <span>✓ Chemically Formulated</span>
-            <span>✓ 100% IFRA Certified Safe</span>
+            <span>✓ Olfactory Pyramid Approved</span>
+            <span>✓ VIP Flacon Configured</span>
+            <span>✓ Atelier Vault Reserved</span>
+            <span>✓ GI Sourcing & IFRA Certified</span>
           </div>
         </div>
       `;
@@ -996,24 +1869,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const bubble = msgEl.querySelector('.msg-bubble');
     const agentRes = data.agentResult;
 
-    let stepsHtml = `<div class="react-steps-box">`;
-    if (agentRes && agentRes.traceSteps) {
-      agentRes.traceSteps.forEach(s => {
-        if (s.type === 'THOUGHT') {
-          stepsHtml += `<div class="react-step-row"><span class="step-tag-thought">[THOUGHT]</span> <span>${escapeHtml(s.content)}</span></div>`;
-        } else if (s.type === 'ACTION') {
-          stepsHtml += `<div class="react-step-row"><span class="step-tag-action">[ACTION]</span> <span>Tool '${escapeHtml(s.tool)}': ${escapeHtml(JSON.stringify(s.input))}</span></div>`;
-        } else if (s.type === 'OBSERVATION') {
-          stepsHtml += `<div class="react-step-row"><span class="step-tag-obs">[OBSERVATION]</span> <span>${escapeHtml(JSON.stringify(s.output))}</span></div>`;
-        }
-      });
+    let stepsHtml = '';
+    if (agentRes && agentRes.traceSteps && agentRes.traceSteps.length > 0) {
+      stepsHtml = `
+        <details style="margin-top:0.8rem; background:rgba(0,0,0,0.35); border:1px solid rgba(192, 132, 252, 0.25); border-radius:8px; padding:0.5rem 0.8rem;">
+          <summary style="font-size:0.72rem; color:var(--accent-purple); font-family:var(--font-mono); cursor:pointer; outline:none; user-select:none;">
+            🤖 View Autonomous ReAct Tool-Calling Execution Trace (${agentRes.traceSteps.length} steps)
+          </summary>
+          <div class="react-steps-box" style="margin-top:0.5rem; max-height:220px; overflow-y:auto; border-top:1px solid rgba(255,255,255,0.06); padding-top:0.5rem;">
+            ${agentRes.traceSteps.map(s => {
+              if (s.type === 'THOUGHT') {
+                return `<div class="react-step-row"><span class="step-tag-thought">[THOUGHT]</span> <span>${escapeHtml(s.content)}</span></div>`;
+              } else if (s.type === 'ACTION') {
+                return `<div class="react-step-row"><span class="step-tag-action">[ACTION]</span> <span>Tool '${escapeHtml(s.tool)}': ${escapeHtml(JSON.stringify(s.input))}</span></div>`;
+              } else if (s.type === 'OBSERVATION') {
+                return `<div class="react-step-row"><span class="step-tag-obs">[OBSERVATION]</span> <span>${escapeHtml(JSON.stringify(s.output))}</span></div>`;
+              }
+              return '';
+            }).join('')}
+          </div>
+        </details>
+      `;
     }
-    stepsHtml += `</div>`;
 
     bubble.innerHTML = `
-      <p style="color:var(--gold-primary); font-weight:600">${formatMarkdown(agentRes ? agentRes.finalAnswer : '')}</p>
+      <div style="color: var(--text-main); font-size: 0.92rem; line-height: 1.6;">${formatMarkdown(agentRes ? agentRes.finalAnswer : '')}</div>
       ${stepsHtml}
-      <div class="msg-meta">
+      <div class="msg-meta" style="margin-top: 0.8rem;">
         <span class="tag-agent">🤖 Multi-Agent ReAct Execution (${data.telemetryTrace ? data.telemetryTrace.latencyMs : 0}ms)</span>
       </div>
     `;
@@ -1106,28 +1988,32 @@ document.addEventListener('DOMContentLoaded', () => {
     traceTbody.innerHTML = traces.map(t => {
       let routingInfo = '';
       if (t.routingTrace && t.routingTrace.length > 0) {
-        routingInfo = `<div style="color:var(--accent-purple); font-size:0.68rem; margin-top:0.2rem;">${escapeHtml(t.routingTrace[t.routingTrace.length - 1])}</div>`;
+        routingInfo = `<div style="color:var(--accent-purple); font-size:0.75rem; margin-top:0.2rem; font-family:var(--font-mono);">${escapeHtml(t.routingTrace[t.routingTrace.length - 1])}</div>`;
       }
 
       return `
-        <tr>
-          <td>
-            <div style="color:var(--gold-primary); font-weight:600">${escapeHtml(t.timestamp.substring(11, 19))}</div>
-            <div style="color:var(--text-dim); font-size:0.68rem">${escapeHtml(t.traceId)}</div>
+        <tr class="oms-table-row">
+          <td style="padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <div style="color:var(--gold-primary); font-weight:700; font-size:0.88rem;">${escapeHtml(t.timestamp ? t.timestamp.substring(11, 19) : '')}</div>
+            <div style="margin-top:0.2rem;"><span style="background:rgba(226, 192, 133, 0.1); border:1px solid rgba(226, 192, 133, 0.25); padding:0.1rem 0.45rem; border-radius:4px; font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono);">${escapeHtml(t.traceId || 'TRC-000')}</span></div>
           </td>
-          <td>
-            <div>${escapeHtml(t.provider)}</div>
-            <div style="color:var(--text-dim); font-size:0.68rem">${escapeHtml(t.model)}</div>
+          <td style="padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight:600; color:var(--text-main); font-size:0.85rem;">${escapeHtml(t.provider || 'Gateway')}</div>
+            <div style="color:var(--text-muted); font-size:0.75rem; font-family:var(--font-mono);">${escapeHtml(t.model || 'llm-v1')}</div>
             ${routingInfo}
           </td>
-          <td>${t.cacheHit ? '<span class="tag-cache">HIT (0ms)</span>' : '<span style="color:var(--text-muted)">MISS</span>'}</td>
-          <td style="font-weight:700; color:var(--accent-cyan)">${t.latencyMs}ms</td>
-          <td>
-            <div>${t.tokens ? t.tokens.total : 0} tok</div>
-            <div style="color:var(--gold-primary); font-size:0.68rem">$${t.costUSD ? t.costUSD.toFixed(6) : '0.000000'}</div>
+          <td style="padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            ${t.cacheHit ? '<span style="background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.3); color:var(--accent-green); padding:0.2rem 0.6rem; border-radius:12px; font-size:0.75rem; font-weight:700;">HIT (0ms)</span>' : '<span style="color:var(--text-muted); font-size:0.78rem; font-weight:600;">MISS</span>'}
           </td>
-          <td>
-            ${t.guardrailStatus && t.guardrailStatus.flagged ? '<span style="color:var(--accent-danger)">🛡 FLAGGED</span>' : '<span style="color:var(--accent-green)">✓ SAFE</span>'}
+          <td style="padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight:700; color:var(--accent-cyan); font-size:0.9rem; font-family:var(--font-mono);">
+            ${t.latencyMs} ms
+          </td>
+          <td style="padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight:700; color:var(--text-main); font-size:0.85rem; font-family:var(--font-mono);">${t.tokens ? t.tokens.total : 0} tok</div>
+            <div style="color:var(--gold-primary); font-size:0.75rem; font-family:var(--font-mono); margin-top:0.1rem;">$${t.costUSD ? t.costUSD.toFixed(6) : '0.000000'}</div>
+          </td>
+          <td style="padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            ${t.guardrailStatus && t.guardrailStatus.flagged ? '<span style="background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.3); color:var(--accent-danger); padding:0.2rem 0.6rem; border-radius:12px; font-size:0.75rem; font-weight:700;">🛡 FLAGGED</span>' : '<span style="background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); color:var(--accent-green); padding:0.2rem 0.6rem; border-radius:12px; font-size:0.75rem; font-weight:700;">✓ SAFE</span>'}
           </td>
         </tr>
       `;
