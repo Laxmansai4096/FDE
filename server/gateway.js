@@ -70,12 +70,34 @@ class LLMGateway {
   // ---------------------------------------------------------------------------
   
   /**
-   * Layer 1: Fast Regex PII & Keyword Security Filter
+   * Layer 1: Fast Regex PII, Base64 & Unicode Homoglyph Security Filter
    */
   runStaticRegexGuardrails(query) {
     let sanitized = query;
     let flagged = false;
     let reasons = [];
+
+    // 0. Base64 & Unicode Homoglyph Normalization
+    // Strip zero-width characters and normalize Cyrillic/Greek homoglyphs to ASCII
+    let normalizedQuery = query
+      .replace(/[\u200B-\u200D\uFEFF]/g, '') // Strip zero-width spaces
+      .normalize("NFKD") // Normalize unicode forms
+      .replace(/[\u0430]/g, 'a').replace(/[\u0435]/g, 'e').replace(/[\u043E]/g, 'o').replace(/[\u0440]/g, 'r'); // Common homoglyphs
+
+    // Check for Base64 encoded payload attacks (e.g. SWdub3JlIHByZXZpb3Vz...)
+    const base64Regex = /([A-Za-z0-9+/]{20,}={0,2})/g;
+    let base64Matches = normalizedQuery.match(base64Regex);
+    if (base64Matches) {
+      base64Matches.forEach(b64 => {
+        try {
+          const decoded = Buffer.from(b64, 'base64').toString('utf-8');
+          if (decoded && decoded.length > 5) {
+            normalizedQuery += " " + decoded;
+            reasons.push("Security: Decoded Base64 payload for inspection");
+          }
+        } catch (e) {}
+      });
+    }
 
     // Static PII Patterns
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
@@ -129,7 +151,7 @@ class LLMGateway {
       "override boundary"
     ];
 
-    const lower = query.toLowerCase();
+    const lower = normalizedQuery.toLowerCase();
     for (const kw of injectionKeywords) {
       if (lower.includes(kw)) {
         flagged = true;

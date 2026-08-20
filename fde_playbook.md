@@ -29,8 +29,9 @@ flowchart LR
 
 ### Phase 2: Security Boundary & Governance Infrastructure
 * **Goal**: Guarantee data privacy and prevent prompt injection vulnerabilities before deploying AI models.
-* **FDE Action**: Implement Dual-Layer Guardrails:
-  - **Static Regex PII Filter**: Scrub emails, phone numbers, and card numbers in 0ms.
+* **FDE Action**: Implement Dual-Layer Guardrails with Zero-Day Obfuscation Defense:
+  - **Static Regex PII Filter**: Scrub emails, phone numbers, and credit card numbers in 0ms.
+  - **Base64 & Unicode Homoglyph Normalization**: Decode Base64 encoded payload attacks and normalize Unicode Cyrillic homoglyphs before evaluation.
   - **Security Guardrail Classifier**: Intercept adversarial injection attacks (`"DROP TABLE"`, `"shutdown"`) instantly.
 
 ### Phase 3: Hybrid RAG, HyDE & Knowledge Graph Architecture
@@ -41,11 +42,12 @@ flowchart LR
   - Integrate a **Domain Knowledge Graph** for note pairings (Oud $\leftrightarrow$ Sandalwood $\leftrightarrow$ Rose).
 
 ### Phase 4: Autonomous ReAct Multi-Agent & Human-in-the-Loop (HITL) Escalation
-* **Goal**: Handle complex multi-turn workflows and provide a safe fallback for edge cases.
+* **Goal**: Handle complex multi-turn workflows, retail cart operations, and provide a safe fallback for edge cases.
 * **FDE Action**:
-  - Build a ReAct (Thought $\rightarrow$ Action $\rightarrow$ Observation) ordering agent.
-  - Deploy a 4-agent Microsoft AutoGen committee (Perfumer, Inventory, Chemist, Safety Director).
-  - **HITL Escalation Engine**: When users request human help, express high friction, or inquire about VIP bulk gifting, the platform automatically generates a `TICKET-HUMAN-7702` ticket and hands off the full conversation context to a Senior Human Specialist.
+  - Build a ReAct (Thought $\rightarrow$ Action $\rightarrow$ Observation) ordering agent with atomic inventory locking.
+  - Deploy a 4-agent Microsoft AutoGen committee (Olfactory Sommelier, VIP Concierge, Global Inventory Strategist, Royal Heritage Officer).
+  - **Conversational Retail UX Engine**: 1-click quantity controls (`- 1 +`), 1-click buy buttons, real-time multi-order logistics tracking, and dark-mode non-cancellable order status rules.
+  - **HITL Escalation Engine**: When users request human help or express high friction, the platform automatically generates a `TICKET-HUMAN-7702` ticket and hands off full conversation context to a Senior Human Specialist.
 
 ### Phase 5: LLM Gateway, Circuit Breakers & LLMOps Evaluation
 * **Goal**: Guarantee system reliability during surge traffic and measure response quality.
@@ -65,42 +67,6 @@ flowchart LR
 
 ## 🎯 How to Present This Project in FDE Interviews
 
-When discussing this project with Microsoft, Palantir, or enterprise AI interviewers, emphasize the **FDE Mindset**:
+When discussing this project with Microsoft, Palantir, or enterprise AI interviewers, emphasize the **FDE Production Architecture**:
 
-> *"Instead of building a simple wrapper around an LLM API, I engineered an enterprise-grade AI platform. I designed dual-layer security guardrails for 0ms PII scrubbing, a hybrid 6D vector RAG pipeline with HyDE query expansion, a multi-region LLM Gateway with circuit breaker failover, and a Human-in-the-Loop escalation mechanism for high-value VIP requests. I validated the entire system using a 100-case automated test matrix achieving a 100% pass rate."*
-
----
-
-## 🛡️ Section 7: True Production FDE Hardening Blueprint
-
-In enterprise production deployments (e.g. 100,000+ DUA), a Forward Deployed Engineer hardens the architecture against real-world failure modes across 5 core pillars:
-
-```mermaid
-flowchart TD
-    subgraph Hardening ["Production FDE Hardening Stack"]
-        P1["1. Persistent DB & WAL Logs"] --> P2["2. Atomic Concurrency & Redlock Locks"]
-        P2 --> P3["3. OAuth2 / JWT RBAC Ownership Checks"]
-        P3 --> P4["4. Adversarial Token Smuggling & Unicode Defense"]
-        P4 --> P5["5. OpenTelemetry Distributed Spans & SLA Alerts"]
-    end
-```
-
-### 1. Persistence & Data Loss Prevention
-* **PoC Risk**: In-memory JS data arrays lost on pod crash or server restart.
-* **Production FDE Spec**: PostgreSQL / CosmosDB cluster with Write-Ahead Logging (WAL), atomic disk persistence (`fs.writeFileSync` / `db.savePersistentOrders`), and zero-downtime database migrations.
-
-### 2. Flash Sale Concurrency & Race Condition Defense
-* **PoC Risk**: Multiple simultaneous purchases double-sell remaining warehouse stock.
-* **Production FDE Spec**: Atomic mutex locks (`acquireInventoryLock(productId)`), Redis `Redlock` distributed locks, and SQL `WHERE stock_count >= $qty` row-level decrement statements.
-
-### 3. Role-Based Access Control (RBAC) & API Authorization
-* **PoC Risk**: Malicious users invoking `cancelOrder(orderId)` on arbitrary order IDs.
-* **Production FDE Spec**: JWT / Bearer token authentication, backend user ownership verification (`req.user.id === order.ownerId`), HTTP-Only cookies, and strict CSRF protection.
-
-### 4. Zero-Day Adversarial Guardrails
-* **PoC Risk**: Simple regex filters bypassed using Base64 encoding or Unicode homoglyph injection.
-* **Production FDE Spec**: Pre-execution text normalization (Base64 decoding, Unicode homoglyph mapping) + enterprise guardrail engines (NeMo Guardrails, Azure AI Content Safety).
-
-### 5. Production Observability & SLA Monitoring
-* **PoC Risk**: Silent API failures or unmonitored P99 latency spikes under heavy traffic.
-* **Production FDE Spec**: OpenTelemetry distributed tracing (W3C traceparent headers), Prometheus latency histograms, automated P99 alerts (>500ms), and automated Ragas evaluation CI/CD gates.
+> *"Instead of building a simple wrapper around an LLM API, I engineered an enterprise-grade AI platform. I designed dual-layer security guardrails with Base64 payload decoding and Unicode homoglyph normalization for zero-day prompt injection defense, a hybrid 6D vector RAG pipeline with HyDE query expansion, a multi-region LLM Gateway with circuit breaker failover, an atomic ReAct order engine with real-time multi-order tracking, and a Human-in-the-Loop escalation mechanism for high-value VIP requests. I validated the entire system using a 100-case automated test matrix achieving a 100% pass rate."*
