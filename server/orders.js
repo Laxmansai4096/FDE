@@ -1,29 +1,15 @@
-const fs = require('fs');
-const path = require('path');
-const { FRAGRANCE_CATALOG, findMatchingProduct } = require('./db');
+/**
+ * AURA PERFUMERY - Relational Order Management System (OMS) (server/orders.js)
+ */
 
-const DB_FILE_PATH = path.join(__dirname, '../scratch/db_orders.json');
+const { FRAGRANCE_CATALOG, findMatchingProduct } = require('./db');
 
 class OrderManagementSystem {
   constructor() {
-    this.locks = new Map(); // Atomic Inventory Mutex Lock
-    this.orders = this.loadPersistentOrders();
-  }
-
-  // Production Storage Persistence & Auto-Sync
-  loadPersistentOrders() {
-    try {
-      if (fs.existsSync(DB_FILE_PATH)) {
-        const raw = fs.readFileSync(DB_FILE_PATH, 'utf8');
-        return JSON.parse(raw);
-      }
-    } catch (e) {
-      console.warn("WARN: Failed to load persistent state from disk, using fallback initial state.", e.message);
-    }
-    return [
+    // Relational Database Orders Table initialized with active customer orders
+    this.orders = [
       {
         orderId: "ORD-8821",
-        ownerId: "usr_vip_001",
         productId: "perfume_001",
         productName: "Royal Oud & Mysore Sandalwood",
         size: "100ml",
@@ -38,7 +24,6 @@ class OrderManagementSystem {
       },
       {
         orderId: "ORD-9430",
-        ownerId: "usr_vip_001",
         productId: "perfume_003",
         productName: "Royal Kashmir Saffron & Amber",
         size: "100ml",
@@ -52,27 +37,6 @@ class OrderManagementSystem {
         estimatedDelivery: "2026-08-19T14:00:00Z"
       }
     ];
-  }
-
-  savePersistentOrders() {
-    try {
-      const dir = path.dirname(DB_FILE_PATH);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(DB_FILE_PATH, JSON.stringify(this.orders, null, 2), 'utf8');
-    } catch (e) {
-      console.error("ERROR: Persistent orders save failed:", e.message);
-    }
-  }
-
-  // Production Lock & Concurrency Control (Prevents Flash Sale Overselling)
-  acquireInventoryLock(productId) {
-    if (this.locks.get(productId)) return false;
-    this.locks.set(productId, true);
-    return true;
-  }
-
-  releaseInventoryLock(productId) {
-    this.locks.delete(productId);
   }
 
   // 1. Check Order Tracking Status & Estimated Delivery Date (Supports Single or Multi-Order Tracking)
@@ -161,7 +125,6 @@ class OrderManagementSystem {
     };
 
     this.orders.unshift(newOrder);
-    this.savePersistentOrders();
 
     return {
       success: true,
@@ -194,7 +157,7 @@ class OrderManagementSystem {
       return {
         success: false,
         status: order.status,
-        message: `Order **${order.orderId}** has already been **${order.status}** and is currently in transit via ${order.carrier}.\n\nAccording to AURA Atelier policy, shipped orders cannot be cancelled online. Please contact specialized VIP Support for returns upon package arrival.`
+        message: `Order **${order.orderId}** has already been **${order.status}** via ${order.carrier} (Tracking: \`${order.trackingNumber}\`). Under policy, shipped orders cannot be cancelled online. Please contact customer care for returns.`
       };
     }
 
@@ -208,23 +171,18 @@ class OrderManagementSystem {
 
     // Update state to CANCELLED
     order.status = "CANCELLED";
-    
+
     // Restore Stock to Catalog
     const product = FRAGRANCE_CATALOG.find(p => p.id === order.productId || p.name === order.productName);
     if (product) {
-      product.stockCount += (order.quantity || 1);
+      product.stockCount += order.quantity;
       product.inStock = true;
     }
-
-    this.savePersistentOrders();
 
     return {
       success: true,
       orderId: order.orderId,
-      message: `❌ **Order ${order.orderId} Cancelled Successfully!**\n\n` +
-               `• **Refund Amount**: **${order.priceInRupees || '$' + order.totalPrice}** (Issued back to original payment method)\n` +
-               `• **Inventory Restored**: +${order.quantity || 1} unit returned to warehouse stock.\n` +
-               `• **Status Updated**: **CANCELLED & REFUNDED**`
+      message: `Order **${order.orderId}** for **${order.productName}** has been updated to **CANCELLED**. A full refund of ${order.priceInRupees || '$' + order.totalPrice} has been issued to your payment method. Atelier inventory has been restored (+${order.quantity} unit).`
     };
   }
 
